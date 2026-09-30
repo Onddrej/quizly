@@ -31,7 +31,7 @@ Quizlet's familiar study flow, including Learn mode, with no subscription, no ad
 
 ## Capabilities and Constraints
 
-- v1 scope: sets (create, edit, delete, bulk paste), flashcards, pronunciation, Learn mode (multiple choice, then typed answers, in rounds until every term is mastered).
+- v1 scope: sets (create, edit, delete, bulk paste), flashcards, pronunciation, Learn mode (multiple choice, then typing the English term, then typing the definition, in rounds until every term is mastered).
 - Interface language: English.
 - Pronunciation: English, with a US/UK voice preference.
 - Answer checking in Learn mode tolerates case, diacritics and small typos.

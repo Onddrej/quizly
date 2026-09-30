@@ -17,7 +17,7 @@ v1 je hotová, keď si vlastník na telefóne nainštaluje Quizly z GitHub Pages
 
 - Sety: vytvorenie, úprava, zmazanie, hromadné vloženie zoznamu.
 - Kartičky (Flashcards) so zaraďovaním „ešte sa učím" / „viem".
-- Learn mód: výber z možností → písanie, po kolách, kým nie je všetko zvládnuté.
+- Learn mód: výber z možností → písanie anglického slovíčka → písanie slovenskej definície, po kolách, kým nie je všetko zvládnuté.
 - Výslovnosť anglických slovíčok cez hlasy zariadenia (US / UK).
 - Hviezdičky pri slovíčkach a režim kartičiek „len označené".
 - Nastavenia: prízvuk, téma, záloha (export/import), inštalácia appky.
@@ -102,19 +102,22 @@ Systémové tlačidlo Späť na Androide funguje cez históriu prehliadača. Nee
 
 ### 5.1 Stav slovíčka
 
-Každá kartička má `stage`:
+Každá kartička má `stage`. Slovíčko prejde tromi typmi otázok: výber z možností → písanie anglického pojmu → písanie definície (naopak).
 
 | stage | Význam | Zobrazenie | Ďalšia otázka v Learn |
 |---|---|---|---|
 | 0 | ešte nevidené | not studied | výber z možností |
-| 1 | videné, zatiaľ chyba vo výbere alebo chyba pri písaní | learning | výber z možností |
-| 2 | správne vo výbere | learning | písanie |
-| 3 | správne napísané | mastered | – |
+| 1 | videné, zatiaľ chyba vo výbere | learning | výber z možností |
+| 2 | správne vo výbere | learning | písanie: definícia → anglický pojem |
+| 3 | správne napísaný anglický pojem | learning | písanie naopak: anglický pojem → definícia |
+| 4 | správne napísaná aj definícia | mastered | – |
 
 Prechody:
-- Výber z možností, správne → 2.
-- Písanie, správne (aj s preklepom) → 3.
-- Akákoľvek chyba alebo „Don't know?" → 1.
+- Správna odpoveď (pri písaní aj s preklepom alebo cez „I was right") posunie slovíčko o jeden krok: 0/1 → 2 → 3 → 4.
+- Chyba alebo „Don't know?" vráti slovíčko o jeden typ otázky späť:
+  - chyba vo výbere → 1 (zostáva výber),
+  - chyba pri písaní anglického pojmu → 1 (späť na výber),
+  - chyba pri písaní definície → 2 (späť na písanie anglického pojmu).
 
 Kartičky (Flashcards) `stage` nemenia.
 
@@ -122,7 +125,7 @@ Kartičky (Flashcards) `stage` nemenia.
 
 - **Kolo** má 7 slovíčok (`ROUND_SIZE = 7`), pri menšom počte nezvládnutých slovíčok menej.
 - **Výber do kola:**
-  1. Najprv rozpracované slovíčka (stage 1 a 2), od najdlhšie nevidených (`lastAnsweredAt`).
+  1. Najprv rozpracované slovíčka (stage 1, 2 a 3), od najdlhšie nevidených (`lastAnsweredAt`).
   2. Potom nové (stage 0) v poradí setu.
 - **Poradie v kole:** slovíčka sa pýtajú v zamiešanom poradí.
 - **Chyby v kole:** slovíčko s chybou sa zaradí na koniec kola a spýta sa znova, najviac 2-krát za kolo.
@@ -130,9 +133,13 @@ Kartičky (Flashcards) `stage` nemenia.
   - Zobrazí sa pojem (s reproduktorom) a 4 definície: správna + 3 náhodné iné definície z toho istého setu.
   - Duplicitné texty sa vylúčia.
   - Set s 2–3 kartičkami má 2–3 možnosti.
-- **Písanie:** zobrazí sa definícia a píše sa anglický pojem. Vyhodnotenie podľa 5.4.
+- **Písanie anglického pojmu** (stage 2): zobrazí sa definícia s nadpisom „Definition" a výzva „Type the English term". Rozloženie podľa obrazovky 6 v návrhu.
+- **Písanie naopak** (stage 3): zobrazí sa anglický pojem s nadpisom „Term" a reproduktorom a výzva „Type the definition in Slovak" (jazyk podľa `definitionLang` setu). Rozloženie rovnaké ako obrazovka 6, len s vymeneným obsahom.
+  - Ak definícia obsahuje viac variantov oddelených čiarkou (napr. „odchod, odlet"), stačí napísať ktorýkoľvek z nich.
+- **Vyhodnotenie oboch typov písania** podľa 5.4.
 - **Spätná väzba:** panel zdola s výsledkom, pri chybe so správnou odpoveďou, tlačidlom „Continue" a reproduktorom pri anglickom slove.
-  - Pri chybe v písaní je tlačidlo „I was right", ktoré odpoveď uzná ako správnu (pre synonymá).
+  - Pri chybe v písaní (oboch smeroch) je tlačidlo „I was right", ktoré odpoveď uzná ako správnu (pre synonymá).
+  - Pri chybe v písaní definície sa zobrazí celá definícia so všetkými variantmi a poznámka „Any one of these is enough."
   - Enter = Continue.
 - **Koniec kola:**
   - „Round N done".
@@ -140,7 +147,7 @@ Kartičky (Flashcards) `stage` nemenia.
   - „Z terms are now mastered".
   - Aktualizovaný pruh pokroku a zoznam slovíčok z kola so stavom Mastered / Again.
   - Tlačidlá „Continue to round N+1" a „Back to set".
-- **Dokončenie setu:** keď majú všetky kartičky stage 3, zobrazí sa „You've mastered all 24 terms" s tlačidlami „Study again" (reset `stage` na 0) a „Back to set".
+- **Dokončenie setu:** keď majú všetky kartičky stage 4, zobrazí sa „You've mastered all 24 terms" s tlačidlami „Study again" (reset `stage` na 0) a „Back to set".
 - **Pokračovanie neskôr:** stav je v DB (`stage` na kartičkách, `learnRound` na sete). Zatvorenie appky uprostred kola nič nestratí; po návrate sa zostaví nové kolo z aktuálnych stavov.
 - **Číslovanie kôl:** `learnRound` sa zvýši o 1 po dokončení kola. „Study again" aj „Reset progress" ho vrátia na 1.
 - **Rozloženie počas otázky:** hore „Round N", pod tým pruh pokroku s počtom zvládnutých a celkovým počtom.
@@ -159,14 +166,17 @@ Kartičky (Flashcards) `stage` nemenia.
 
 ### 5.4 Vyhodnotenie napísanej odpovede
 
-1. **Normalizácia** (odpoveď aj pojem):
+Rovnaké pravidlá platia pre oba smery. Očakávaná odpoveď je anglický pojem (stage 2) alebo definícia (stage 3).
+
+1. **Normalizácia** (odpoveď aj očakávaný text):
    - malé písmená, odstránenie diakritiky (NFD), zlúčenie medzier, orezanie,
    - typografické apostrofy → `'`,
    - odstránenie interpunkcie na začiatku a konci.
-2. **Prijateľné varianty pojmu:**
-   - celý pojem,
-   - každá časť po rozdelení cez `/`, `;` alebo `,`,
-   - pri každom variante aj verzia bez úvodného `to `, `a `, `an `, `the `.
+   - Diakritika sa teda neráta ako chyba ani v slovenčine („batozina" = „batožina").
+2. **Prijateľné varianty:**
+   - celý očakávaný text,
+   - každá časť po rozdelení cez `,`, `/` alebo `;` (napr. pri „odchod, odlet" stačí „odchod" aj „odlet"),
+   - len pri anglickom pojme: pri každom variante aj verzia bez úvodného `to `, `a `, `an `, `the `.
 3. **Výsledok:**
    - **presná zhoda** s variantom → správne,
    - **Levenshteinova vzdialenosť** ≤ 1 pre dĺžku 4–7 znakov alebo ≤ 2 pre 8+ znakov → správne s poznámkou „Correct, small typo" a správnym pravopisom,
@@ -199,7 +209,7 @@ Kartičky (Flashcards) `stage` nemenia.
   - Jazyk `en-US` alebo `en-GB` podľa nastavenia, rýchlosť 0.95.
   - Hlas sa vyberá podľa presnej zhody jazyka, inak akýkoľvek `en-*`.
   - Zoznam hlasov sa načítava asynchrónne (udalosť `voiceschanged`).
-- **Kde je reproduktor:** pojmy v zozname setu, náhľad kartičiek, predná strana kartičky, zadanie výberu z možností, spätná väzba pri písaní a zoznam na konci kola.
+- **Kde je reproduktor:** pojmy v zozname setu, náhľad kartičiek, predná strana kartičky, zadanie výberu z možností, zadanie písania naopak, spätná väzba pri písaní anglického pojmu a zoznam na konci kola.
 - **Bez `speechSynthesis`** alebo bez anglického hlasu sa reproduktory skryjú a v nastaveniach je vysvetlenie.
 
 ## 6. Dáta
@@ -224,7 +234,7 @@ interface Card {
   definition: string;
   position: number;      // poradie v sete
   starred: boolean;
-  stage: 0 | 1 | 2 | 3;
+  stage: 0 | 1 | 2 | 3 | 4;
   lastAnsweredAt?: number;
 }
 
@@ -258,7 +268,7 @@ src/
     editor/     SetEditorPage, pasteParser.ts
     set/        SetPage
     flashcards/ FlashcardsPage, useFlashcardSession.ts
-    learn/      LearnPage, engine.ts, answerCheck.ts, MultipleChoice, WrittenQuestion, Feedback, RoundSummary, SetComplete
+    learn/      LearnPage, engine.ts, answerCheck.ts, MultipleChoice, WrittenQuestion (oba smery), Feedback, RoundSummary, SetComplete
     settings/   SettingsPage
   lib/          speech.ts, text.ts (normalize, levenshtein), random.ts (RNG s možnosťou seedu pre testy)
   ui/           Button, IconButton, SpeakButton, Card, ProgressBar, TopBar, TabBar, Field, Sheet, InlineConfirm, EmptyState
@@ -330,12 +340,12 @@ Presne podľa schváleného návrhu (`docs/design/screens-v1.html`):
 
 - **Unit testy (Vitest, písané pred kódom):**
   - `pasteParser`: oddeľovače, poradie priority, pomlčky bez medzier, chybné riadky.
-  - `answerCheck`: normalizácia, diakritika, varianty cez `/ ; ,`, `to`/členy, hranice tolerancie preklepov, krátke slová.
-  - `learn/engine`: výber do kola, poradie priorít, prechody `stage`, opakovanie chýb (max 2×), koniec kola, dokončenie setu, distraktory (bez duplicít, malé sety). Deterministické cez seedovaný RNG.
+  - `answerCheck`: normalizácia, diakritika (aj slovenská), varianty cez `, / ;` v oboch smeroch, `to`/členy len pri angličtine, hranice tolerancie preklepov, krátke slová.
+  - `learn/engine`: výber do kola, poradie priorít, typ otázky podľa `stage`, všetky prechody `stage` vrátane návratu o krok pri chybe, opakovanie chýb (max 2×), koniec kola, dokončenie setu (stage 4), distraktory (bez duplicít, malé sety). Deterministické cez seedovaný RNG.
   - `backup`: export → import vráti rovnaké dáta, odmietnutie neplatných súborov.
 - **Komponentové testy (RTL + `fake-indexeddb`):**
   - vytvorenie setu vložením zoznamu → stránka setu ukáže kartičky,
-  - Learn: správny výber → ďalšia otázka toho slovíčka je písanie,
+  - Learn: správny výber → ďalšia otázka toho slovíčka je písanie anglického pojmu, po ňom písanie definície,
   - kartičky: zaradenie a Undo menia počítadlá.
 - **Ručné overenie na telefóne:** inštalácia z GitHub Pages, režim lietadla (štart aj učenie), výslovnosť US/UK, svetlá a tmavá téma, systémové tlačidlo Späť.
 - **Impeccable:** detektor (`impeccable detect`) nad UI súbormi a záverečná revízia podľa direction contract.
