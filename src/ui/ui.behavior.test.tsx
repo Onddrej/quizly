@@ -14,6 +14,7 @@ import { StageBar } from './StageBar';
 import { Field } from './Field';
 import { Page } from './Page';
 import { SpeakButton } from './SpeakButton';
+import { InlineConfirm } from './InlineConfirm';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -231,5 +232,92 @@ describe('SpeakButton inside a pointer-listening container', () => {
     expect(down).not.toHaveBeenCalled();
     expect(up).not.toHaveBeenCalled();
     expect(click).not.toHaveBeenCalled();
+  });
+});
+
+function SheetHost() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open
+      </button>
+      <Sheet open={open} title="Options" onClose={() => setOpen(false)}>
+        <button type="button">First</button>
+        <button type="button">Last</button>
+      </Sheet>
+    </>
+  );
+}
+
+describe('Sheet focus management', () => {
+  it('moves focus into the dialog when it opens', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    const dialog = screen.getByRole('dialog', { name: 'Options' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('does not pull focus back to the dialog when the parent re-renders', async () => {
+    const { rerender } = render(
+      <Sheet open title="Options" onClose={() => {}}>
+        <button type="button">Inside</button>
+      </Sheet>,
+    );
+    screen.getByRole('button', { name: 'Inside' }).focus();
+    rerender(
+      <Sheet open title="Options" onClose={() => {}}>
+        <button type="button">Inside</button>
+      </Sheet>,
+    );
+    expect(screen.getByRole('button', { name: 'Inside' })).toHaveFocus();
+  });
+
+  it('wraps Tab from the last control to the first', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    screen.getByRole('button', { name: 'Last' }).focus();
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+  });
+
+  it('wraps Shift+Tab from the first control to the last', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    screen.getByRole('button', { name: 'Close' }).focus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus();
+  });
+
+  it('wraps Shift+Tab from the dialog container to the last control', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    screen.getByRole('dialog').focus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Last' })).toHaveFocus();
+  });
+
+  it('restores focus to the element that opened it when closed with Escape', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    screen.getByRole('button', { name: 'Last' }).focus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+  });
+
+  it('restores focus to the element that opened it when closed with the Close button', async () => {
+    render(<SheetHost />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+  });
+});
+
+describe('InlineConfirm focus', () => {
+  it('focuses the Cancel button on mount', () => {
+    render(<InlineConfirm message="Delete it?" confirmLabel="Delete" danger onConfirm={() => {}} onCancel={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Button } from './Button';
 import styles from './InlineConfirm.module.css';
 
@@ -10,13 +11,17 @@ interface InlineConfirmProps {
   onCancel: () => void;
 }
 
-/** In-page confirmation; the artifact sandbox and good UX both rule out window.confirm(). */
+/** In-page confirmation; the artifact sandbox and good UX both rule out window.confirm(). Focus starts on the safe choice. */
 export function InlineConfirm({ message, confirmLabel, cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }: InlineConfirmProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    cancelRef.current?.focus();
+  }, []);
   return (
     <div className={styles.box} role="alertdialog" aria-label={message}>
       <p>{message}</p>
       <div className={styles.actions}>
-        <Button variant="ghost" onClick={onCancel}>
+        <Button ref={cancelRef} variant="ghost" onClick={onCancel}>
           {cancelLabel}
         </Button>
         <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>

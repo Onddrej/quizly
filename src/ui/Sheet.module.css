@@ -20,6 +20,7 @@
   box-shadow: var(--sheet-shadow);
   animation: rise .22s var(--ease-out);
 }
+.sheet:focus { outline: none; }
 .head { display: flex; align-items: center; justify-content: space-between; min-height: 48px; }
 .head h2 { font-size: 17px; font-weight: 800; }
 @keyframes rise { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
