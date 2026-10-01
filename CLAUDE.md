@@ -10,6 +10,7 @@ Personal Quizlet-style vocabulary PWA (sets, flashcards, pronunciation, Learn mo
 ## Commands
 - `npm run dev` – dev server at http://localhost:5173/quizly/
 - `npm test` – Vitest unit and component tests
+- `npm run test:watch` – Vitest in watch mode; `npx vitest run <path>` runs a single file or folder
 - `npm run typecheck`
 - `npm run build` – type check + production build to dist/
 - `npm run preview` – serve dist/ at http://localhost:4173/quizly/
@@ -23,6 +24,6 @@ Personal Quizlet-style vocabulary PWA (sets, flashcards, pronunciation, Learn mo
 ## Conventions
 - UI text in English; Slovak appears only in user data and sample data.
 - Colors only through tokens in src/styles/tokens.css; no literal colors in components.
-- Pure logic (src/lib, pasteParser, editorValidation, answerCheck, learn engine, flashcardSession, backup validation) has no React or Dexie imports and is written test-first.
-- Only src/db/* touches Dexie. Only src/lib/speech.ts touches speechSynthesis.
+- Pure logic (everything in src/lib except the React hook useSpeech.ts, plus pasteParser, editorValidation, answerCheck, the learn engine, flashcardSession and the parseBackup function) has no React or Dexie imports and is written test-first.
+- Only src/db/* touches the Dexie `db` instance; components call its repository functions and read through `useLiveQuery`. Only src/lib/speech.ts touches `speechSynthesis`; hooks go through its helpers.
 - The impeccable plugin is enabled for this project; its design hook checks UI edits.
