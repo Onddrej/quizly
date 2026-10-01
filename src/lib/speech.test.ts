@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getVoices, hasEnglishVoice, isSpeechSupported, onVoicesChanged, pickVoice, speak } from './speech';
 
-const voice = (lang: string, name = lang) => ({ lang, name }) as SpeechSynthesisVoice;
+const voice = (lang: string, name = lang, localService?: boolean) => ({ lang, name, localService }) as SpeechSynthesisVoice;
 
 class FakeUtterance {
   text: string;
@@ -44,6 +44,34 @@ describe('pickVoice', () => {
   });
   it('is case-insensitive on the voice side too', () => {
     expect(pickVoice([voice('EN-gb', 'gb'), voice('en-US')], 'en-GB')?.name).toBe('gb');
+  });
+
+  describe('on-device ranking (network voices are silent offline)', () => {
+    it('prefers a local voice over a network voice for the same accent', () => {
+      const voices = [voice('en-US', 'network', false), voice('en-US', 'local', true)];
+      expect(pickVoice(voices, 'en-US')?.name).toBe('local');
+    });
+    it('lets an accent match beat locality', () => {
+      const voices = [voice('en-US', 'us-network', false), voice('en-GB', 'gb-local', true)];
+      expect(pickVoice(voices, 'en-US')?.name).toBe('us-network');
+    });
+    it('prefers a local voice among the English fallbacks when no accent matches', () => {
+      const voices = [voice('en-AU', 'au-network', false), voice('en-AU', 'au-local', true)];
+      expect(pickVoice(voices, 'en-GB')?.name).toBe('au-local');
+    });
+    it('treats a missing localService flag as not local', () => {
+      const voices = [voice('en-US', 'unknown'), voice('en-US', 'local', true)];
+      expect(pickVoice(voices, 'en-US')?.name).toBe('local');
+    });
+    it('keeps the first voice in the device list when ranks are equal', () => {
+      expect(pickVoice([voice('en-US', 'first', true), voice('en-US', 'second', true)], 'en-US')?.name).toBe('first');
+      expect(pickVoice([voice('en-US', 'first', false), voice('en-US', 'second', false)], 'en-US')?.name).toBe('first');
+      expect(pickVoice([voice('en-AU', 'first', true), voice('en-IN', 'second', true)], 'en-GB')?.name).toBe('first');
+    });
+    it('still handles underscore languages and returns undefined without an English voice', () => {
+      expect(pickVoice([voice('en_US', 'underscore', false), voice('en-GB', 'gb', true)], 'en-US')?.name).toBe('underscore');
+      expect(pickVoice([voice('sk-SK', 'sk', true), voice('de-DE', 'de', true)], 'en-US')).toBeUndefined();
+    });
   });
 });
 

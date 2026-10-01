@@ -23,9 +23,26 @@ export function hasEnglishVoice(voices: readonly SpeechSynthesisVoice[]): boolea
   return voices.some((v) => langOf(v).startsWith('en'));
 }
 
+/** Best English voice: exact accent beats any English, and on-device (`localService === true`) beats network (undefined/false) since network voices are silent offline; the first of equals wins. */
 export function pickVoice(voices: readonly SpeechSynthesisVoice[], accent: Accent): SpeechSynthesisVoice | undefined {
   const wanted = accent.toLowerCase();
-  return voices.find((v) => langOf(v) === wanted) ?? voices.find((v) => langOf(v).startsWith('en'));
+  const rank = (v: SpeechSynthesisVoice): number => {
+    const lang = langOf(v);
+    const local = v.localService === true ? 1 : 0;
+    if (lang === wanted) return 2 + local;
+    if (lang.startsWith('en')) return local;
+    return -1;
+  };
+  let best: SpeechSynthesisVoice | undefined;
+  let bestRank = -1;
+  for (const v of voices) {
+    const r = rank(v);
+    if (r > bestRank) {
+      best = v;
+      bestRank = r;
+    }
+  }
+  return best;
 }
 
 export function speak(text: string, accent: Accent): void {
