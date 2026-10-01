@@ -24,6 +24,13 @@ function withOptionalPrefix(values: string[], language: AnswerLanguage): string[
   return [...out];
 }
 
+/**
+ * Grades a typed answer. 'exact' and 'typo' both count as correct; 'typo' carries the "small typo" note.
+ * Accepted forms are the whole expected text and each variant split on comma, slash or semicolon; for
+ * language 'english' each form is also accepted without a leading to/a/an/the. A typo is measured with
+ * Levenshtein distance against the length of the accepted form (spec 5.4), so very short words must match
+ * exactly. Text in brackets or parentheses is part of the answer, not optional.
+ */
 export function checkAnswer(given: string, expected: string, language: AnswerLanguage): AnswerVerdict {
   const answer = normalize(given);
   if (!answer) return 'wrong';
