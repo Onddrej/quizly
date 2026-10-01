@@ -17,3 +17,8 @@ export class QuizlyDB extends Dexie {
 }
 
 export const db = new QuizlyDB();
+
+/** Opens the database; rejects when IndexedDB is unavailable (e.g. some private browsing modes). */
+export async function openDatabase(): Promise<void> {
+  await db.open();
+}

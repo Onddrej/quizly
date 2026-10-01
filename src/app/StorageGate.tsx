@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { db } from '../db/schema';
+import { openDatabase } from '../db/schema';
 import { Page } from '../ui/Page';
 import { EmptyState } from '../ui/EmptyState';
 
@@ -8,7 +8,7 @@ export function StorageGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'checking' | 'ok' | 'failed'>('checking');
 
   useEffect(() => {
-    db.open()
+    openDatabase()
       .then(() => setState('ok'))
       .catch(() => setState('failed'));
   }, []);
