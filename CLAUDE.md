@@ -24,6 +24,6 @@ Personal Quizlet-style vocabulary PWA (sets, flashcards, pronunciation, Learn mo
 ## Conventions
 - UI text in English; Slovak appears only in user data and sample data.
 - Colors only through tokens in src/styles/tokens.css; no literal colors in components.
-- Pure logic (everything in src/lib except the React hook useSpeech.ts, plus pasteParser, editorValidation, answerCheck, the learn engine, flashcardSession and the parseBackup function) has no React or Dexie imports and is written test-first.
-- Only src/db/* touches the Dexie `db` instance; components call its repository functions and read through `useLiveQuery`. Only src/lib/speech.ts touches `speechSynthesis`; hooks go through its helpers.
+- Pure logic (everything in src/lib except the React hook useSpeech.ts, plus pasteParser, editorValidation, answerCheck, the learn engine, flashcardSession and the parseBackup function, which only shares src/db/backup.ts with code that uses `db`) uses no React or Dexie and is written test-first.
+- Outside tests, only src/db/* touches the Dexie `db` instance (components call src/db's repository functions and read through `useLiveQuery` or `useSetData`), and only src/lib/speech.ts touches `speechSynthesis` (hooks go through its helpers).
 - The impeccable plugin is enabled for this project; its design hook checks UI edits.
