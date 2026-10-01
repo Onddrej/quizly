@@ -47,6 +47,7 @@ export function stageAfter(stage: Stage, correct: boolean): Stage {
   return stage === 3 ? 2 : 1;
 }
 
+/** In-progress cards (stage 1-3, longest unseen first) before new ones (set order), at most `size`. Mastered cards are never picked. */
 export function selectRoundCards(cards: readonly Card[], size = ROUND_SIZE): Card[] {
   const open = cards.filter((c) => c.stage < 4);
   const inProgress = open
@@ -56,6 +57,7 @@ export function selectRoundCards(cards: readonly Card[], size = ROUND_SIZE): Car
   return [...inProgress, ...fresh].slice(0, size);
 }
 
+/** Builds a round from the picked cards at their saved stages, in shuffled order. Returns an already finished round (empty queue) when nothing is left to learn, so check isSetMastered first. */
 export function startRound(cards: readonly Card[], rng: Rng = defaultRng, size = ROUND_SIZE): RoundState {
   const picked = selectRoundCards(cards, size);
   const ids = picked.map((c) => c.id);
@@ -71,6 +73,7 @@ export function isRoundFinished(state: RoundState): boolean {
   return state.queue.length === 0;
 }
 
+/** Pure: returns the next state and the card's new stage; never mutates its input. Throws when the round is already finished. A card is asked at most 1 + MAX_RETRIES_PER_CARD times per round. */
 export function answer(state: RoundState, correct: boolean): { state: RoundState; stage: Stage } {
   const id = state.queue[0];
   if (id === undefined) throw new Error('Round is already finished');
@@ -99,7 +102,10 @@ export function summarizeRound(state: RoundState): RoundSummary {
   };
 }
 
-/** The correct definition plus up to `count - 1` distinct definitions from the same set, shuffled. */
+/**
+ * The correct definition plus up to `count - 1` distinct definitions from the same set, shuffled.
+ * May return fewer than `count` options, even a single one (tiny sets, or every card shares the definition); callers must cope.
+ */
 export function pickChoices(target: Card, all: readonly Card[], rng: Rng = defaultRng, count = 4): string[] {
   const seen = new Set([normalize(target.definition)]);
   const distractors: string[] = [];
