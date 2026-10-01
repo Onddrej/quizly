@@ -16,11 +16,13 @@
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .primary { background: var(--accent); color: var(--on-accent); }
-.primary:hover:not(:disabled) { background: var(--accent-press); }
 .outline { background: var(--surface); color: var(--ink); border: 2px solid var(--line); }
-.outline:hover:not(:disabled) { border-color: var(--ink-2); }
 .ghost { background: transparent; color: var(--accent-ink); padding: 0 12px; }
-.ghost:hover:not(:disabled) { background: var(--accent-soft); }
 .danger { background: var(--bad-soft); color: var(--bad); border: 2px solid var(--bad-fill); }
-.danger:hover:not(:disabled) { background: var(--surface); }
 .block { width: 100%; }
+@media (hover: hover) {
+  .primary:hover:not(:disabled) { background: var(--accent-press); }
+  .outline:hover:not(:disabled) { border-color: var(--ink-2); }
+  .ghost:hover:not(:disabled) { background: var(--accent-soft); }
+  .danger:hover:not(:disabled) { background: var(--surface); }
+}

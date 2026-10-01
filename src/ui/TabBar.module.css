@@ -17,8 +17,7 @@
   color: var(--ink-2);
   text-decoration: none;
 }
-.tab:hover { color: var(--ink); }
-.active, .active:hover { color: var(--accent-ink); }
+.active { color: var(--accent-ink); }
 .create { justify-self: center; border-radius: 50%; text-decoration: none; }
 .plus {
   width: 46px;
@@ -30,5 +29,9 @@
   color: var(--on-accent);
   transition: background-color .15s ease-out, transform .1s ease-out;
 }
-.create:hover .plus { background: var(--accent-press); }
 .create:active .plus { transform: scale(.95); }
+@media (hover: hover) {
+  .tab:hover { color: var(--ink); }
+  .active:hover { color: var(--accent-ink); }
+  .create:hover .plus { background: var(--accent-press); }
+}
