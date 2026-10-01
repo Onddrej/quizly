@@ -1,5 +1,6 @@
 import { db } from './schema';
 import type { Card, Stage, StudySet } from './types';
+import { requestPersistentStorage } from '../lib/storage';
 
 export interface Backup {
   app: 'quizly';
@@ -16,9 +17,17 @@ export class BackupError extends Error {
   }
 }
 
+/**
+ * Reads both tables in one read transaction (one consistent snapshot) and leaves out cards whose set is missing:
+ * parseBackup rejects the whole file because of a single orphan card, and the owner must always be able to restore their own backup.
+ */
 export async function createBackup(now: Date = new Date()): Promise<Backup> {
-  const [sets, cards] = await Promise.all([db.sets.toArray(), db.cards.toArray()]);
-  return { app: 'quizly', version: 1, exportedAt: now.toISOString(), sets, cards };
+  const { sets, cards } = await db.transaction('r', db.sets, db.cards, async () => ({
+    sets: await db.sets.toArray(),
+    cards: await db.cards.toArray(),
+  }));
+  const setIds = new Set(sets.map((s) => s.id));
+  return { app: 'quizly', version: 1, exportedAt: now.toISOString(), sets, cards: cards.filter((c) => setIds.has(c.setId)) };
 }
 
 export function serializeBackup(backup: Backup): string {
@@ -82,7 +91,10 @@ export function parseBackup(text: string): Backup {
   };
 }
 
-/** Sets with the same id are replaced together with all their cards; everything runs in one transaction. */
+/**
+ * Sets with the same id are replaced together with all their cards; everything runs in one transaction. Once it has
+ * committed, asks the browser for persistent storage (spec 6.3): restoring a backup into a fresh profile is the first save there.
+ */
 export async function importBackup(backup: Backup): Promise<{ sets: number; cards: number }> {
   await db.transaction('rw', db.sets, db.cards, async () => {
     for (const set of backup.sets) {
@@ -91,5 +103,6 @@ export async function importBackup(backup: Backup): Promise<{ sets: number; card
     await db.sets.bulkPut(backup.sets);
     await db.cards.bulkPut(backup.cards);
   });
+  void requestPersistentStorage();
   return { sets: backup.sets.length, cards: backup.cards.length };
 }
