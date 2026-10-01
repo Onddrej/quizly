@@ -86,6 +86,12 @@ describe('updateSet details', () => {
     expect(aCards.map((c) => c.term)).toEqual(['stolen']);
     expect(aCards[0].id).not.toBe(bCard.id);
   });
+
+  it('writes nothing for a set that does not exist', async () => {
+    await updateSet('missing', { title: 'x', definitionLang: 'sk', cards: twoCards }).catch(() => undefined);
+    expect(await db.cards.count()).toBe(0);
+    expect(await db.sets.count()).toBe(0);
+  });
 });
 
 describe('resetProgress details', () => {

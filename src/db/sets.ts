@@ -57,6 +57,8 @@ export async function createSet(draft: SetDraft, now: number = Date.now()): Prom
 
 export async function updateSet(setId: string, draft: SetDraft, now: number = Date.now()): Promise<void> {
   await db.transaction('rw', db.sets, db.cards, async () => {
+    const updated = await db.sets.update(setId, { title: draft.title.trim(), definitionLang: draft.definitionLang, updatedAt: now });
+    if (updated === 0) throw new Error('Set not found');
     const existing = await db.cards.where('setId').equals(setId).toArray();
     const byId = new Map(existing.map((c) => [c.id, c]));
     const kept = new Set<string>();
@@ -68,7 +70,6 @@ export async function updateSet(setId: string, draft: SetDraft, now: number = Da
     });
     await db.cards.bulkDelete(existing.filter((c) => !kept.has(c.id)).map((c) => c.id));
     await db.cards.bulkPut(rows);
-    await db.sets.update(setId, { title: draft.title.trim(), definitionLang: draft.definitionLang, updatedAt: now });
   });
 }
 
