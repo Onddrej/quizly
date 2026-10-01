@@ -1,0 +1,19 @@
+.btn {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  transition: background-color .15s ease-out, color .15s ease-out, transform .1s ease-out;
+}
+.btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.btn:active:not(:disabled) { transform: scale(.94); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.sm { width: 32px; height: 32px; }
+.accent, .accent:hover:not(:disabled) { color: var(--accent-ink); }
+.accent:hover:not(:disabled) { background: var(--accent-soft); }
+.star[aria-pressed="true"] svg { fill: var(--star); stroke: var(--star); }

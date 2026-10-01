@@ -1,0 +1,28 @@
+import { Button } from './Button';
+import styles from './InlineConfirm.module.css';
+
+interface InlineConfirmProps {
+  message: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** In-page confirmation; the artifact sandbox and good UX both rule out window.confirm(). */
+export function InlineConfirm({ message, confirmLabel, cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }: InlineConfirmProps) {
+  return (
+    <div className={styles.box} role="alertdialog" aria-label={message}>
+      <p>{message}</p>
+      <div className={styles.actions}>
+        <Button variant="ghost" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}

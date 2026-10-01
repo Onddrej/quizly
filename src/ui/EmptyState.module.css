@@ -1,0 +1,14 @@
+.box { margin-top: 12vh; display: grid; justify-items: center; gap: 10px; padding: 24px 16px; text-align: center; }
+.icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; }
+.text { max-width: 32ch; color: var(--ink-2); }
+.action { margin-top: 8px; }

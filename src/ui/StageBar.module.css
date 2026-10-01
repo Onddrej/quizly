@@ -1,0 +1,13 @@
+.wrap { display: grid; gap: 12px; min-width: 0; }
+.bar { height: 10px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; display: flex; }
+.sm { height: 8px; }
+.m, .l { display: block; height: 100%; transition: width .25s var(--ease-out); }
+.m { background: var(--good-fill); }
+.l { background: var(--learning-fill); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.item { display: inline-flex; align-items: center; gap: 6px; }
+.item b { color: var(--ink); font-weight: 700; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: block; }
+.dotM { background: var(--good-fill); }
+.dotL { background: var(--learning-fill); }
+.dotN { background: var(--line); }

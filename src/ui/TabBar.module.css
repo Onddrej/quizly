@@ -1,0 +1,34 @@
+.bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.tab {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 0;
+  border-radius: var(--r-ctl);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.tab:hover { color: var(--ink); }
+.active, .active:hover { color: var(--accent-ink); }
+.create { justify-self: center; border-radius: 50%; text-decoration: none; }
+.plus {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  transition: background-color .15s ease-out, transform .1s ease-out;
+}
+.create:hover .plus { background: var(--accent-press); }
+.create:active .plus { transform: scale(.95); }

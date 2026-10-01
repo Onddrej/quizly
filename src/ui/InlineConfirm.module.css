@@ -1,0 +1,3 @@
+.box { display: grid; gap: 12px; padding: 14px 16px; border-radius: var(--r-card); background: var(--surface-2); }
+.box p { font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
