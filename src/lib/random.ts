@@ -1,6 +1,9 @@
 export type Rng = () => number;
 
-/** mulberry32: small seedable generator, used to make tests deterministic. */
+/**
+ * mulberry32: small seedable generator, used to make tests deterministic.
+ * The seed is truncated to an unsigned 32-bit integer.
+ */
 export function createRng(seed: number): Rng {
   let state = seed >>> 0;
   return () => {
@@ -12,8 +15,10 @@ export function createRng(seed: number): Rng {
   };
 }
 
-export const defaultRng: Rng = Math.random;
+/** Looks Math.random up on every call, so tests can spy on it. */
+export const defaultRng: Rng = () => Math.random();
 
+/** Returns a new, shuffled array and never mutates the input. rng must return values in [0, 1). */
 export function shuffle<T>(items: readonly T[], rng: Rng = defaultRng): T[] {
   const out = items.slice();
   for (let i = out.length - 1; i > 0; i--) {
