@@ -109,3 +109,12 @@ describe('parsePastedList: errors and real-world input', () => {
     });
   });
 });
+
+describe('non-breaking spaces around a dash', () => {
+  it('splits on a dash with NBSP (web, PDF and Word copies)', () => {
+    expect(parsePastedList('departure\u00A0\u2013\u00A0odchod, odlet').pairs).toEqual([
+      { term: 'departure', definition: 'odchod, odlet' },
+    ]);
+    expect(parsePastedList('gate\u00A0- brána').pairs).toEqual([{ term: 'gate', definition: 'brána' }]);
+  });
+});

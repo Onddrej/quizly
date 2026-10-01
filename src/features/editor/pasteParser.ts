@@ -14,7 +14,9 @@ export interface ParseResult {
   errors: ParseError[];
 }
 
-const SPACED_DASH = / [-–—] /;
+// A dash separates only with whitespace on both sides ("check-in" stays whole). \s also covers the
+// non-breaking spaces that web, PDF and Word copies produce.
+const SPACED_DASH = /\s[-–—]\s/;
 
 function splitLine(line: string): [string, string] | null {
   const tab = line.indexOf('\t');
@@ -28,6 +30,16 @@ function splitLine(line: string): [string, string] | null {
   return null;
 }
 
+/**
+ * Parses pasted text into term/definition pairs. The Set editor relies on this contract:
+ * - one card per non-blank line; a line without a separator, or with an empty term or definition,
+ *   is reported in `errors` instead of becoming a card;
+ * - the separator is the first of these found in the line: a tab, a dash (hyphen, en dash or em dash)
+ *   with whitespace on both sides, a colon, a comma; the line is split at its first occurrence;
+ * - the term and the definition are both trimmed;
+ * - blank lines are skipped but still counted, so `ParseError.line` is the 1-based line number in the
+ *   pasted text.
+ */
 export function parsePastedList(text: string): ParseResult {
   const pairs: ParsedPair[] = [];
   const errors: ParseError[] = [];
