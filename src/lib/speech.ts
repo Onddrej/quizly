@@ -6,6 +6,19 @@ export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
 }
 
+/** Voices the device offers; empty when speech is unsupported or the list has not loaded yet. */
+export function getVoices(): SpeechSynthesisVoice[] {
+  return isSpeechSupported() ? window.speechSynthesis.getVoices() : [];
+}
+
+/** Calls `listener` whenever the voice list changes (it loads asynchronously). Returns an unsubscribe function; a no-op when unsupported. */
+export function onVoicesChanged(listener: () => void): () => void {
+  if (!isSpeechSupported()) return () => undefined;
+  const synth = window.speechSynthesis;
+  synth.addEventListener('voiceschanged', listener);
+  return () => synth.removeEventListener('voiceschanged', listener);
+}
+
 export function hasEnglishVoice(voices: readonly SpeechSynthesisVoice[]): boolean {
   return voices.some((v) => langOf(v).startsWith('en'));
 }

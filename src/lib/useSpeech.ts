@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '../app/SettingsContext';
-import { hasEnglishVoice, isSpeechSupported, speak } from './speech';
+import { getVoices, hasEnglishVoice, isSpeechSupported, onVoicesChanged, speak } from './speech';
 
 export interface SpeechState {
   supported: boolean;
@@ -14,14 +14,12 @@ export interface SpeechState {
 export function useSpeech(): SpeechState {
   const { accent } = useSettings();
   const supported = isSpeechSupported();
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => (supported ? window.speechSynthesis.getVoices() : []));
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(getVoices);
 
   useEffect(() => {
-    if (!isSpeechSupported()) return;
-    const update = () => setVoices(window.speechSynthesis.getVoices());
+    const update = () => setVoices(getVoices());
     update();
-    window.speechSynthesis.addEventListener('voiceschanged', update);
-    return () => window.speechSynthesis.removeEventListener('voiceschanged', update);
+    return onVoicesChanged(update);
   }, []);
 
   const say = useCallback((text: string) => speak(text, accent), [accent]);

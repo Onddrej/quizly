@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hasEnglishVoice, isSpeechSupported, pickVoice, speak } from './speech';
+import { getVoices, hasEnglishVoice, isSpeechSupported, onVoicesChanged, pickVoice, speak } from './speech';
 
 const voice = (lang: string, name = lang) => ({ lang, name }) as SpeechSynthesisVoice;
 
@@ -68,5 +68,45 @@ describe('speak', () => {
     const synth = stubSpeech([voice('en-US')]);
     speak('   ', 'en-US');
     expect(synth.speak).not.toHaveBeenCalled();
+  });
+});
+
+describe('getVoices', () => {
+  it('returns an empty list when speech is unsupported', () => {
+    expect(getVoices()).toEqual([]);
+  });
+
+  it('returns the voices the device offers when speech is supported', () => {
+    const voices = [voice('en-US'), voice('sk-SK')];
+    stubSpeech(voices);
+    expect(getVoices()).toEqual(voices);
+  });
+});
+
+describe('onVoicesChanged', () => {
+  it('returns a harmless unsubscribe function when speech is unsupported', () => {
+    const listener = vi.fn();
+    const unsubscribe = onVoicesChanged(listener);
+    expect(typeof unsubscribe).toBe('function');
+    expect(() => unsubscribe()).not.toThrow();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('registers the listener for the voiceschanged event', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    const listener = vi.fn();
+    onVoicesChanged(listener);
+    expect(synth.addEventListener).toHaveBeenCalledTimes(1);
+    expect(synth.addEventListener).toHaveBeenCalledWith('voiceschanged', listener);
+  });
+
+  it('removes the very same listener when the returned function is called', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    const listener = vi.fn();
+    const unsubscribe = onVoicesChanged(listener);
+    expect(synth.removeEventListener).not.toHaveBeenCalled();
+    unsubscribe();
+    expect(synth.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(synth.removeEventListener).toHaveBeenCalledWith('voiceschanged', listener);
   });
 });
