@@ -39,12 +39,22 @@ describe('pickVoice', () => {
     expect(pickVoice([voice('sk-SK'), voice('en-AU')], 'en-GB')?.lang).toBe('en-AU');
     expect(pickVoice([voice('sk-SK')], 'en-US')).toBeUndefined();
   });
+  it('matches an Android underscore voice exactly, not just by English fallback', () => {
+    expect(pickVoice([voice('en-GB', 'gb'), voice('en_US', 'us')], 'en-US')?.name).toBe('us');
+  });
+  it('is case-insensitive on the voice side too', () => {
+    expect(pickVoice([voice('EN-gb', 'gb'), voice('en-US')], 'en-GB')?.name).toBe('gb');
+  });
 });
 
 describe('hasEnglishVoice', () => {
   it('detects English voices', () => {
     expect(hasEnglishVoice([voice('sk-SK'), voice('en-IN')])).toBe(true);
     expect(hasEnglishVoice([voice('sk-SK')])).toBe(false);
+  });
+  it('does not treat non-English voices starting with e as English', () => {
+    expect(hasEnglishVoice([voice('es-ES'), voice('et-EE')])).toBe(false);
+    expect(pickVoice([voice('es-ES')], 'en-US')).toBeUndefined();
   });
 });
 
@@ -68,6 +78,32 @@ describe('speak', () => {
     const synth = stubSpeech([voice('en-US')]);
     speak('   ', 'en-US');
     expect(synth.speak).not.toHaveBeenCalled();
+  });
+
+  it('cancels BEFORE it speaks (otherwise the new utterance is killed)', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    speak('hello', 'en-US');
+    expect(synth.cancel.mock.invocationCallOrder[0]).toBeLessThan(synth.speak.mock.invocationCallOrder[0]);
+  });
+
+  it('still speaks with the accent as lang when the device has no English voice', () => {
+    const synth = stubSpeech([voice('sk-SK')]);
+    speak('hello', 'en-GB');
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    const utterance = synth.speak.mock.calls[0][0] as FakeUtterance;
+    expect(utterance.lang).toBe('en-GB');
+    expect(utterance.voice).toBeNull();
+  });
+
+  it('does not cancel current speech when the text is blank', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    speak('  ', 'en-US');
+    expect(synth.cancel).not.toHaveBeenCalled();
+  });
+
+  it('needs both speechSynthesis and SpeechSynthesisUtterance', () => {
+    vi.stubGlobal('speechSynthesis', { getVoices: () => [] });
+    expect(isSpeechSupported()).toBe(false);
   });
 });
 
