@@ -52,3 +52,41 @@ describe('checkAnswer', () => {
     expect(checkAnswer('   ', 'gate', 'english')).toBe('wrong');
   });
 });
+
+describe('checkAnswer: additional pins', () => {
+  it('treats "a" and "an" as optional leading articles, in both directions', () => {
+    expect(checkAnswer('lot', 'a lot', 'english')).toBe('exact');
+    expect(checkAnswer('apple', 'an apple', 'english')).toBe('exact');
+    expect(checkAnswer('a lot', 'lot', 'english')).toBe('exact');
+    expect(checkAnswer('an apple', 'apple', 'english')).toBe('exact');
+  });
+
+  it('strips only a whole leading word, never the start of a word or a middle article', () => {
+    expect(checkAnswer('mato', 'tomato', 'english')).toBe('wrong');
+    expect(checkAnswer('atre', 'theatre', 'english')).toBe('wrong');
+    expect(checkAnswer('look at sky', 'look at the sky', 'english')).toBe('wrong');
+    expect(checkAnswer('a', 'a', 'english')).toBe('exact');
+    expect(checkAnswer('an', 'a', 'english')).toBe('wrong');
+  });
+
+  it('does not strip prefixes from the typed answer when the language is other', () => {
+    expect(checkAnswer('to pes', 'pes', 'other')).toBe('wrong');
+  });
+
+  it('keys the typo allowance to the expected text, not to what was typed', () => {
+    expect(checkAnswer('cats', 'cat', 'english')).toBe('wrong');
+    expect(checkAnswer('cat', 'cats', 'english')).toBe('typo');
+  });
+
+  it('allows a typo in any variant and after a prefix', () => {
+    expect(checkAnswer('odchot', 'odchod, odlet', 'other')).toBe('typo');
+    expect(checkAnswer('psuk', 'pes, psík', 'other')).toBe('typo');
+    expect(checkAnswer('the gat', 'gate', 'english')).toBe('typo');
+    expect(checkAnswer('gat', 'the gate', 'english')).toBe('typo');
+  });
+
+  it('normalizes every variant, not only the whole text', () => {
+    expect(checkAnswer('odchod', 'Odchod, Odlet', 'other')).toBe('exact');
+    expect(checkAnswer('meskanie', 'omeskanie, meškanie', 'other')).toBe('exact');
+  });
+});
