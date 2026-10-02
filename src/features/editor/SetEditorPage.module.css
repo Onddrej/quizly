@@ -1,0 +1,38 @@
+.langRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.langChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+}
+.langChip select { padding: 4px 0; border: 0; background: transparent; font-weight: 700; color: var(--accent-ink); cursor: pointer; }
+.paste { display: grid; gap: 10px; padding: 14px; border-radius: var(--r-card); background: var(--surface-2); }
+.pasteHead { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+.pasteHead svg { color: var(--accent-ink); }
+.hint { font-size: 13px; color: var(--ink-2); }
+.paste textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+  background: var(--surface);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.paste textarea:focus { outline: none; border-color: var(--accent); }
+.paste textarea::placeholder { color: var(--ink-2); }
+.paste > button { justify-self: start; min-height: 40px; }
+.parseErrors { display: grid; gap: 2px; font-size: 13px; font-weight: 600; color: var(--bad); }
+.formError { font-size: 14px; font-weight: 600; color: var(--bad); }
+.rows { display: grid; gap: 12px; }
+.row { display: grid; gap: 14px; padding: 12px 16px 16px; }
+.rowHead { display: flex; justify-content: space-between; align-items: center; }
+.num { font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
