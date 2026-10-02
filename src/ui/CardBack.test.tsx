@@ -131,6 +131,17 @@ describe('CardBack variants', () => {
     expect(face.container.querySelectorAll('*').length).toBe(rowShape);
   });
 
+  it('face and row get different variant classes', () => {
+    const row = render(<CardBack card={{ definition: 'x' }} variant="row" />);
+    const rowClass = (row.container.firstElementChild as HTMLElement).className;
+    row.unmount();
+    const face = render(<CardBack card={{ definition: 'x' }} variant="face" />);
+    const faceClass = (face.container.firstElementChild as HTMLElement).className;
+    expect(faceClass).not.toBe(rowClass);
+    expect(faceClass).toMatch(/face/);
+    expect(rowClass).toMatch(/row/);
+  });
+
   it('defaults to the row variant', () => {
     const implicit = render(<CardBack card={card} lang="sk" />);
     const implicitClass = (implicit.container.firstElementChild as HTMLElement).className;
