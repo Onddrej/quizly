@@ -36,3 +36,9 @@
 .row { display: grid; gap: 14px; padding: 12px 16px 16px; }
 .rowHead { display: flex; justify-content: space-between; align-items: center; }
 .num { font-weight: 700; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+/* Optional definition and examples (spec 5.7). The ghost button keeps its 12px inset, so pull it back to align with the fields. */
+.row .toggle { justify-self: start; min-height: 40px; margin-inline-start: -12px; }
+.chevron { transition: transform .15s var(--ease-out); }
+.toggle[aria-expanded='true'] .chevron { transform: rotate(180deg); }
+.details { display: grid; gap: 14px; }
+.details[hidden] { display: none; }

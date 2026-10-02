@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, useNavigate, useParams } from 'react-router';
-import { ClipboardPaste, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ClipboardPaste, Plus, Trash2, X } from 'lucide-react';
 import { createSet, updateSet } from '../../db/sets';
 import { useSetData } from '../../db/useSetData';
 import { NotFound } from '../../app/NotFound';
@@ -11,18 +11,71 @@ import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
 import { Button } from '../../ui/Button';
 import { Field } from '../../ui/Field';
+import { FieldArea } from '../../ui/FieldArea';
 import { InlineConfirm } from '../../ui/InlineConfirm';
 import { useToast } from '../../ui/Toast';
 import { parsePastedList, type ParseError } from './pasteParser';
-import { validateDraft, type EditorErrors, type EditorRow } from './editorValidation';
+import { isFilledRow, validateDraft, type EditorErrors, type EditorRow } from './editorValidation';
 import styles from './SetEditorPage.module.css';
 
-const emptyRow = (): EditorRow => ({ key: newId(), term: '', definition: '' });
+const emptyRow = (): EditorRow => ({ key: newId(), term: '', definition: '', meaning: '', examples: '' });
+
+const hasDetails = (row: EditorRow): boolean => Boolean(row.meaning.trim() || row.examples.trim());
 
 function parseErrorText(error: ParseError): string {
   return error.reason === 'no-separator'
     ? `Line ${error.line}: no separator found`
     : `Line ${error.line}: needs a term and a definition`;
+}
+
+interface CardDetailsProps {
+  row: EditorRow;
+  onChange: (patch: Pick<Partial<EditorRow>, 'meaning' | 'examples'>) => void;
+}
+
+/**
+ * Collapsible optional definition and examples of one card (spec 5.7). Closed for a new card, open for a card that already
+ * has either field. Closing only hides the fields: their text lives in the row and is still saved.
+ */
+function CardDetails({ row, onChange }: CardDetailsProps) {
+  const [open, setOpen] = useState(() => hasDetails(row));
+  const panelId = `details-${row.key}`;
+  return (
+    <>
+      <Button
+        variant="ghost"
+        className={styles.toggle}
+        icon={<ChevronDown size={18} className={styles.chevron} />}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {!open && hasDetails(row) ? 'Edit definition and examples' : 'Add definition and examples'}
+      </Button>
+      <div id={panelId} className={styles.details} hidden={!open}>
+        {open && (
+          <>
+            <Field
+              id={`meaning-${row.key}`}
+              label="Definition"
+              value={row.meaning}
+              lang="en"
+              autoCapitalize="off"
+              onChange={(e) => onChange({ meaning: e.target.value })}
+            />
+            <FieldArea
+              id={`examples-${row.key}`}
+              label="Examples"
+              hint="One or two sentences, one per line."
+              value={row.examples}
+              lang="en"
+              onChange={(e) => onChange({ examples: e.target.value })}
+            />
+          </>
+        )}
+      </div>
+    </>
+  );
 }
 
 export function SetEditorPage() {
@@ -52,7 +105,16 @@ export function SetEditorPage() {
     if (!editing || initialized || loading || !set) return;
     setTitle(set.title);
     setDefinitionLang(set.definitionLang);
-    setRows(cards.map((c) => ({ key: c.id, id: c.id, term: c.term, definition: c.definition })));
+    setRows(
+      cards.map((c) => ({
+        key: c.id,
+        id: c.id,
+        term: c.term,
+        definition: c.definition,
+        meaning: c.meaning ?? '',
+        examples: c.examples ?? '',
+      })),
+    );
     setInitialized(true);
   }, [editing, initialized, loading, set, cards]);
 
@@ -70,8 +132,8 @@ export function SetEditorPage() {
   function addPasted() {
     if (parsed.pairs.length === 0) return;
     setRows((current) => [
-      ...current.filter((r) => r.term.trim() || r.definition.trim()),
-      ...parsed.pairs.map((p) => ({ key: newId(), term: p.term, definition: p.definition })),
+      ...current.filter(isFilledRow),
+      ...parsed.pairs.map((p) => ({ key: newId(), term: p.term, definition: p.definition, meaning: '', examples: '' })),
     ]);
     setPaste('');
     touch();
@@ -137,9 +199,9 @@ export function SetEditorPage() {
       <div className={styles.langRow}>
         <span className={styles.langChip}>Term: English</span>
         <label className={styles.langChip}>
-          Definition:
+          Translation:
           <select
-            aria-label="Definition language"
+            aria-label="Translation language"
             value={definitionLang}
             onChange={(e) => {
               setDefinitionLang(e.target.value);
@@ -161,7 +223,7 @@ export function SetEditorPage() {
           Paste a list
         </h2>
         <label htmlFor="paste-input" className={styles.hint}>
-          One pair per line. Separate term and definition with a dash, tab or comma.
+          One pair per line. Separate term and translation with a dash, tab or comma.
         </label>
         <textarea
           id="paste-input"
@@ -213,11 +275,12 @@ export function SetEditorPage() {
             />
             <Field
               id={`definition-${r.key}`}
-              label="Definition"
+              label="Translation"
               value={r.definition}
               error={errors.rows?.[r.key]?.definition}
               onChange={(e) => updateRow(r.key, { definition: e.target.value })}
             />
+            <CardDetails row={r} onChange={(patch) => updateRow(r.key, patch)} />
           </li>
         ))}
       </ol>
