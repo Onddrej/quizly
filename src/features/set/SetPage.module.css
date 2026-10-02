@@ -1,0 +1,69 @@
+.peek {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 86%;
+  gap: 12px;
+  padding: 2px 2px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.peek::-webkit-scrollbar { display: none; }
+.peekCard { scroll-snap-align: start; min-height: 150px; padding: 12px; display: grid; grid-template-rows: 40px 1fr; }
+.peekWord {
+  align-self: center;
+  justify-self: center;
+  padding-bottom: 28px;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.dots { display: flex; justify-content: center; gap: 6px; margin-top: -6px; }
+.dot { width: 6px; height: 6px; border-radius: 3px; background: var(--line); transition: width .2s var(--ease-out), background-color .2s ease-out; }
+.dotOn { width: 18px; background: var(--accent); }
+.head { display: grid; gap: 4px; }
+.title { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; text-wrap: balance; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.modes { display: grid; gap: 10px; }
+.mode { display: flex; align-items: center; gap: 14px; padding: 14px 12px 14px 14px; color: inherit; text-decoration: none; }
+.modeIcon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.modeText { flex: 1; min-width: 0; display: grid; }
+.modeName { font-size: 16px; font-weight: 700; }
+.modeDisabled .modeIcon { opacity: .5; }
+.modeDisabled .modeName { color: var(--ink-2); }
+.chevron { color: var(--ink-2); }
+.progress { padding: 16px; }
+.termsTitle { font-size: 17px; font-weight: 800; }
+.terms { display: grid; gap: 8px; }
+.term { display: flex; align-items: center; gap: 4px; padding: 10px 6px 10px 16px; }
+.termText { flex: 1; min-width: 0; display: grid; }
+.t { font-weight: 700; overflow-wrap: anywhere; }
+.d { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.menu { display: grid; gap: 4px; }
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-ctl);
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+}
+.menuItem:hover { background: var(--surface-2); }
+.danger { color: var(--bad); }
