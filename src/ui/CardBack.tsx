@@ -1,4 +1,5 @@
 import type { Card } from '../db/types';
+import { splitExamples } from '../lib/cardDetails';
 import styles from './CardBack.module.css';
 
 interface CardBackProps {
@@ -16,10 +17,7 @@ interface CardBackProps {
  */
 export function CardBack({ card, lang, variant = 'row' }: CardBackProps) {
   const meaning = card.meaning?.trim();
-  const examples = (card.examples ?? '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const examples = splitExamples(card.examples);
 
   return (
     <div className={`${styles.wrap} ${styles[variant]}`}>

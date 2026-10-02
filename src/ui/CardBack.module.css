@@ -20,18 +20,18 @@
 }
 
 /* Set page list: sits under the term headline, left aligned. */
-.row .translation { font-size: 15px; font-weight: 600; }
-.row .meaning { font-size: 14px; }
+.row .translation { font-size: 14px; font-weight: 600; }
+.row .meaning { font-size: 13px; }
 .row .examples { font-size: 13px; }
 
 /* Flashcard side: centered, large; long content scrolls inside the card. */
 .face {
   gap: 8px;
-  align-self: center;
+  margin-block: auto;
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
-  padding: 0 12px;
+  padding: 4px 12px;
   text-align: center;
 }
 .face .translation { font-size: 28px; font-weight: 700; line-height: 1.2; text-wrap: balance; }

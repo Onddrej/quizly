@@ -3,7 +3,7 @@ import { db } from './schema';
 import { createSet, listSetSummaries, updateSet, type CardDraft } from './sets';
 import { listCards, setCardStage, toggleStar } from './cards';
 import { BackupError, createBackup, importBackup, parseBackup, serializeBackup } from './backup';
-import { normalizeCardDetails } from '../lib/cardDetails';
+import { normalizeCardDetails, splitExamples } from '../lib/cardDetails';
 import { resetDb } from '../test/db';
 
 beforeEach(resetDb);
@@ -13,6 +13,40 @@ const has = (card: object, key: string) => Object.hasOwn(card, key);
 async function rawCards(setId: string) {
   return (await db.cards.where('setId').equals(setId).sortBy('position')) as unknown as Record<string, unknown>[];
 }
+
+describe('splitExamples', () => {
+  it('returns an empty list for undefined, empty and blank input', () => {
+    expect(splitExamples()).toEqual([]);
+    expect(splitExamples(undefined)).toEqual([]);
+    for (const value of ['', '   ', '\t', '\n', ' \n \n\t\n', '\r\n\r\n', '\r\r']) {
+      expect(splitExamples(value)).toEqual([]);
+    }
+  });
+
+  it('trims every line', () => {
+    expect(splitExamples('  I missed my flight.  \n\tThe gate is closed. ')).toEqual(['I missed my flight.', 'The gate is closed.']);
+  });
+
+  it('keeps a single line as one trimmed item', () => {
+    expect(splitExamples('  Only one.  ')).toEqual(['Only one.']);
+  });
+
+  it('splits on Windows line breaks', () => {
+    expect(splitExamples('One.\r\nTwo.')).toEqual(['One.', 'Two.']);
+  });
+
+  it('splits on a lone carriage return', () => {
+    expect(splitExamples('One.\rTwo.\r Three.')).toEqual(['One.', 'Two.', 'Three.']);
+  });
+
+  it('drops blank lines of any kind', () => {
+    expect(splitExamples('\n One. \n\n   \r\n\r\n Two. \n')).toEqual(['One.', 'Two.']);
+  });
+
+  it('keeps the order of the lines and spaces inside a line', () => {
+    expect(splitExamples('C  c.\nA.\nB.')).toEqual(['C  c.', 'A.', 'B.']);
+  });
+});
 
 describe('normalizeCardDetails', () => {
   it('returns an empty object when nothing is given', () => {
