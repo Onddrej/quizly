@@ -55,11 +55,11 @@ Source: spec section 5.7 (Slovak) in `docs/superpowers/specs/2026-10-01-quizly-v
 
 ## Part B for Task 15 (set page)
 
-- In the terms list, render `CardBack` (variant `row`, `lang` = the set's `definitionLang`) below the term instead of the plain definition line (term stays the bold headline). Test: a card with meaning and examples shows them; a card without shows only the translation.
+- In the terms list, render `CardBack` (variant `row`, `lang` = the set's `definitionLang`) below the term instead of the plain definition line (term stays the bold headline). The implemented `row` variant is translation 14px/600 `--ink`, meaning 13px `--ink-2`, examples 13px italic `--ink-2`; to keep the term the visual anchor make the term (`.t`) 16px/700 (it was body size). Do not clamp the row height. Test: a card with meaning and examples shows them; a card without shows only the translation.
 
 ## Part B for Task 16 (flashcards)
 
-- Wherever the definition side of a card is shown (front when "Start with definition" is on, back otherwise) render `CardBack` (variant `face`) instead of the single `.word` paragraph; the term side is unchanged. Keep the language chip. Tests: the back/front shows translation, meaning and examples; term side unchanged.
+- Wherever the definition side of a card is shown (front when "Start with definition" is on, back otherwise) render `CardBack` (variant `face`) instead of the single `.word` paragraph; the term side is unchanged. Keep the language chip. Place `CardBack` as the middle child of the existing face grid (`auto 1fr auto`, as in the design); it centers itself with `margin-block: auto` and scrolls inside the card when tall, so do not wrap it in a flex column. Note for acceptance on the phone: touch scrolling inside the rotated face is unverified. Make sure the PWA precache glob keeps `woff2` (the italic font files). Tests: the back/front shows translation, meaning and examples; term side unchanged.
 
 ## Part B for Task 17 (Learn page), together with the guard already approved
 
