@@ -108,6 +108,7 @@ export function SetPage() {
         <>
           <div
             className={styles.peek}
+            role="group"
             aria-label="Card preview"
             onScroll={(e) => {
               const el = e.currentTarget;

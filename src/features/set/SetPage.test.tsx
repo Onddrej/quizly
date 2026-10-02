@@ -119,7 +119,7 @@ describe('SetPage options and navigation', () => {
     expect(after.map((c) => c.stage)).toEqual([0, 0]);
     expect(after[0].starred).toBe(true);
     expect((await db.sets.get(id))?.learnRound).toBe(1);
-    expect(screen.getByRole('img', { name: '0 mastered, 0 learning, 2 not studied' })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: '0 mastered, 0 learning, 2 not studied' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set options' })).toHaveFocus();
   });
 
@@ -175,5 +175,20 @@ describe('SetPage modes and list', () => {
     expect(preview.children).toHaveLength(10);
     expect(within(preview).queryByText('w10')).not.toBeInTheDocument();
     expect(screen.getByText('12 terms · English → Slovak')).toBeInTheDocument();
+  });
+
+  it('exposes the card preview strip as a labelled group of the set terms', async () => {
+    const id = await createSet({
+      title: 'T',
+      definitionLang: 'sk',
+      cards: [
+        { term: 'gate', definition: 'brána' },
+        { term: 'delay', definition: 'meškanie' },
+      ],
+    });
+    renderRoute(`/sets/${id}`);
+    const preview = await screen.findByRole('group', { name: 'Card preview' });
+    expect(within(preview).getByText('gate')).toBeInTheDocument();
+    expect(within(preview).getByText('delay')).toBeInTheDocument();
   });
 });
