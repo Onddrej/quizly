@@ -2,6 +2,7 @@
 
 - **Dátum:** 2026-10-01
 - **Stav:** návrh na schválenie
+- **Revízia 2026-10-02:** karta má povinný preklad a voliteľnú definíciu a príkladové vety (pozri 5.7)
 - **Produktový kontext:** [PRODUCT.md](../../../PRODUCT.md)
 - **Schválený dizajn:** [docs/design/screens-v1.html](../../design/screens-v1.html) (publikované aj ako [artifact](https://claude.ai/artifact/QNCG6bYrZLEGL1y9r4FBgq))
 
@@ -16,8 +17,9 @@ v1 je hotová, keď si vlastník na telefóne nainštaluje Quizly z GitHub Pages
 **Vo v1**
 
 - Sety: vytvorenie, úprava, zmazanie, hromadné vloženie zoznamu.
+- Karta s povinným prekladom a voliteľnou definíciou a príkladovými vetami (5.7).
 - Kartičky (Flashcards) so zaraďovaním „ešte sa učím" / „viem".
-- Learn mód: výber z možností → písanie anglického slovíčka → písanie slovenskej definície, po kolách, kým nie je všetko zvládnuté.
+- Learn mód: výber z možností → písanie anglického slovíčka → písanie slovenského prekladu, po kolách, kým nie je všetko zvládnuté.
 - Výslovnosť anglických slovíčok cez hlasy zariadenia (US / UK).
 - Hviezdičky pri slovíčkach a režim kartičiek „len označené".
 - Nastavenia: prízvuk, téma, záloha (export/import), inštalácia appky.
@@ -66,12 +68,12 @@ Systémové tlačidlo Späť na Androide funguje cez históriu prehliadača. Nee
 
 ### 4.2 Editor setu (vytvorenie / úprava)
 
-- **Polia:** Title (povinné) a jazyk definícií (predvolene Slovak; zobrazí sa na zadnej strane kartičky). Jazyk pojmov je vždy angličtina a prízvuk výslovnosti sa riadi nastavením.
+- **Polia:** Title (povinné) a jazyk prekladu (predvolene Slovak; zobrazí sa na zadnej strane kartičky). Jazyk pojmov je vždy angličtina a prízvuk výslovnosti sa riadi nastavením.
 - **Paste a list:** textové pole, pod ním živý počet „Add N cards" a zoznam riadkov, ktoré sa nedajú rozdeliť (napr. „Line 4: no separator found"). Pravidlá v 5.3.
-- **Kartičky:** číslované, s poľami Term / Definition, tlačidlom zmazania a na konci „Add card". Nový set začína dvoma prázdnymi kartičkami.
+- **Kartičky:** číslované, s poľami Term / Translation, voliteľným panelom „Definition and examples" (5.7), tlačidlom zmazania a na konci „Add card". Nový set začína dvoma prázdnymi kartičkami.
 - **Save:**
-  - Prázdne kartičky (bez pojmu aj definície) sa ignorujú.
-  - Kartička s jedným vyplneným poľom zobrazí chybu pri poli („Add a definition" / „Add a term").
+  - Prázdne kartičky (všetky štyri polia prázdne) sa ignorujú.
+  - Kartička s vyplneným poľom, ale bez pojmu alebo bez prekladu, zobrazí chybu pri chýbajúcom poli („Add a translation" / „Add a term").
   - Set potrebuje názov a aspoň 1 kartičku.
   - Po uložení presmeruje na stránku setu.
 - **Úprava existujúcich kartičiek:** zmena textu zachová pokrok, zmazanie kartičku odstráni aj s pokrokom.
@@ -79,7 +81,7 @@ Systémové tlačidlo Späť na Androide funguje cez históriu prehliadača. Nee
 
 ### 4.3 Set
 
-- **Obsah stránky:** náhľad kartičiek (horizontálne posúvanie s bodkami), názov, „N terms · English → Slovak", módy Flashcards a Learn, pokrok (3-farebný pruh + legenda) a zoznam slovíčok s reproduktorom a hviezdičkou.
+- **Obsah stránky:** náhľad kartičiek (horizontálne posúvanie s bodkami), názov, „N terms · English → Slovak", módy Flashcards a Learn, pokrok (3-farebný pruh + legenda) a zoznam slovíčok s reproduktorom a hviezdičkou; pod pojmom blok preklad / definícia / príklady (5.7).
 - **Menu (⋯):**
   - „Edit set".
   - „Reset progress" s vloženým potvrdením.
@@ -130,16 +132,16 @@ Kartičky (Flashcards) `stage` nemenia.
 - **Poradie v kole:** slovíčka sa pýtajú v zamiešanom poradí.
 - **Chyby v kole:** slovíčko s chybou sa zaradí na koniec kola a spýta sa znova, najviac 2-krát za kolo.
 - **Výber z možností:**
-  - Zobrazí sa pojem (s reproduktorom) a 4 definície: správna + 3 náhodné iné definície z toho istého setu.
+  - Zobrazí sa pojem (s reproduktorom) a 4 preklady: správny + 3 náhodné iné preklady z toho istého setu.
   - Duplicitné texty sa vylúčia.
   - Set s 2–3 kartičkami má 2–3 možnosti.
-- **Písanie anglického pojmu** (stage 2): zobrazí sa definícia s nadpisom „Definition" a výzva „Type the English term". Rozloženie podľa obrazovky 6 v návrhu.
-- **Písanie naopak** (stage 3): zobrazí sa anglický pojem s nadpisom „Term" a reproduktorom a výzva „Type the definition in Slovak" (jazyk podľa `definitionLang` setu). Rozloženie rovnaké ako obrazovka 6, len s vymeneným obsahom.
-  - Ak definícia obsahuje viac variantov oddelených čiarkou (napr. „odchod, odlet"), stačí napísať ktorýkoľvek z nich.
+- **Písanie anglického pojmu** (stage 2): zobrazí sa preklad s nadpisom „Translation" a výzva „Type the English term". Rozloženie podľa obrazovky 6 v návrhu.
+- **Písanie naopak** (stage 3): zobrazí sa anglický pojem s nadpisom „Term" a reproduktorom a výzva „Type the translation in Slovak" (jazyk podľa `definitionLang` setu). Rozloženie rovnaké ako obrazovka 6, len s vymeneným obsahom.
+  - Ak preklad obsahuje viac variantov oddelených čiarkou (napr. „odchod, odlet"), stačí napísať ktorýkoľvek z nich.
 - **Vyhodnotenie oboch typov písania** podľa 5.4.
 - **Spätná väzba:** panel zdola s výsledkom, pri chybe so správnou odpoveďou, tlačidlom „Continue" a reproduktorom pri anglickom slove.
   - Pri chybe v písaní (oboch smeroch) je tlačidlo „I was right", ktoré odpoveď uzná ako správnu (pre synonymá).
-  - Pri chybe v písaní definície sa zobrazí celá definícia so všetkými variantmi a poznámka „Any one of these is enough."
+  - Pri chybe v písaní prekladu sa zobrazí celý preklad so všetkými variantmi a poznámka „Any one of these is enough."
   - Enter = Continue.
 - **Koniec kola:**
   - „Round N done".
@@ -166,7 +168,7 @@ Kartičky (Flashcards) `stage` nemenia.
 
 ### 5.4 Vyhodnotenie napísanej odpovede
 
-Rovnaké pravidlá platia pre oba smery. Očakávaná odpoveď je anglický pojem (stage 2) alebo definícia (stage 3).
+Rovnaké pravidlá platia pre oba smery. Očakávaná odpoveď je anglický pojem (stage 2) alebo preklad (stage 3). Porovnáva sa vždy len preklad (pole `definition`); voliteľná definícia a príkladové vety sa pri kontrole nikdy nepoužívajú (5.7).
 
 1. **Normalizácia** (odpoveď aj očakávaný text):
    - malé písmená, odstránenie diakritiky (NFD), zlúčenie medzier, orezanie,
@@ -200,6 +202,7 @@ Rovnaké pravidlá platia pre oba smery. Očakávaná odpoveď je anglický poje
   - „Study Y again" (len kartičky z „still learning").
   - „Restart all".
   - „Back to set".
+- **Strana s prekladom** zobrazuje blok preklad / definícia / príklady (5.7).
 - **Stav kola** kartičiek sa neukladá. Kartičky len aktualizujú `lastStudiedAt` setu.
 
 ### 5.6 Výslovnosť
@@ -211,6 +214,34 @@ Rovnaké pravidlá platia pre oba smery. Očakávaná odpoveď je anglický poje
   - Zoznam hlasov sa načítava asynchrónne (udalosť `voiceschanged`).
 - **Kde je reproduktor:** pojmy v zozname setu, náhľad kartičiek, predná strana kartičky, zadanie výberu z možností, zadanie písania naopak, spätná väzba pri písaní anglického pojmu a zoznam na konci kola.
 - **Bez `speechSynthesis`** alebo bez anglického hlasu sa reproduktory skryjú a v nastaveniach je vysvetlenie.
+
+### 5.7 Karta: preklad, definícia a príkladové vety
+
+Revízia 2026-10-02. Odpovedná strana slovíčka má až tri časti; druhé dve sú voliteľné, takže nové slovíčko stačí uložiť len s prekladom.
+
+**Terminológia.** Pole `definition` v dátach a v celej špecifikácii je hlavný **preklad** karty (doslovný preklad; môže mať viac variantov oddelených čiarkou, napr. „odchod, odlet"). V rozhraní sa volá **Translation** (predtým „Definition"). Voliteľné pole `meaning` je **Definition** (výklad slova v jazyku pojmu, teda anglicky) a voliteľné pole `examples` je **Examples** (1 alebo 2 príkladové vety, každá na samostatnom riadku). Všade, kde staršie časti špecifikácie hovoria o „definícii" slovíčka ako o odpovedi, myslí sa tým preklad.
+
+**Dáta.**
+- `term` (povinné), `definition` = preklad (povinné), `meaning` (voliteľné), `examples` (voliteľné).
+- Prázdne alebo len medzerové voliteľné hodnoty sa neukladajú (pole na karte chýba). Pri `examples` sa orežú riadky a prázdne riadky sa vypustia.
+- Schéma DB (verzia 1, bez nových indexov), staré karty a staré zálohy ostávajú platné.
+
+**Editor (4.2).**
+- Každá kartička má povinné polia Term a Translation. Pod nimi je riadok-tlačidlo „Add definition and examples" (so šípkou, `aria-expanded`), ktoré rozbalí pole Definition (jednoriadkové) a Examples (viacriadkové, nápoveda „One or two sentences, one per line.").
+- Panel je pri novej kartičke zbalený. Pri úprave sa rozbalí automaticky, ak karta už má Definition alebo Examples. Zbalenie panelu polia len skryje; ich text sa zachová a uloží. Keď je panel zbalený a polia sú vyplnené, tlačidlo sa volá „Edit definition and examples".
+- Chyby: chýbajúci pojem „Add a term", chýbajúci preklad „Add a translation". Voliteľné polia sa nevalidujú. Kartička je prázdna (a pri uložení sa ignoruje), keď sú prázdne všetky štyri polia; ak je vyplnená len definícia alebo príklad, zobrazia sa chyby pri pojme a preklade.
+- Hromadné vloženie (5.3) vytvára len pojem a preklad; voliteľné polia sa dopĺňajú v kartičkách.
+
+**Zobrazenie odpovednej strany** (zoznam slovíčok v 4.3 a strana kartičky s prekladom v 5.5):
+- 1. riadok: preklad, **tučne**;
+- 2. riadok: definícia, normálne písmo, sekundárna farba textu;
+- ďalej príkladové vety *kurzívou* (Figtree 400 italic, self-hosted), každá na samostatnom riadku, sekundárna farba textu.
+- Chýbajúce časti sa nezobrazujú a nenechávajú prázdne miesto. Farby len cez tokeny.
+- V zozname slovíčok je pojem hlavný nadpis riadku a pod ním blok (preklad polotučne, menšie písmo); na kartičke je preklad tučne a veľký, definícia a príklady menšie pod ním, text je vycentrovaný a dlhý obsah sa v rámci kartičky posúva.
+
+**Kontrola odpovedí.** Learn aj kartičky pracujú len s prekladom: porovnáva sa vždy iba preklad, pri písaní stačí napísať ktorýkoľvek z prekladov oddelených čiarkou (5.4). `meaning` a `examples` sa pri kontrole nikdy nepoužívajú a v otázkach výberu z možností sa nezobrazujú (možnosti sú preklady).
+
+**Zmeny textov v rozhraní.** „Definition" (názov poľa v editore, nadpis zadania v Learn) → „Translation"; „Add a definition" → „Add a translation"; „Choose the matching definition" → „Choose the matching translation"; „Type the definition in Slovak" → „Type the translation in Slovak" (jazyk podľa `definitionLang`); nápoveda pri hromadnom vložení: „Separate term and translation with a dash, tab or comma."
 
 ## 6. Dáta
 
@@ -231,11 +262,13 @@ interface Card {
   id: string;
   setId: string;
   term: string;
-  definition: string;
+  definition: string;    // preklad (hlavný, viac variantov oddelených čiarkou); v rozhraní „Translation", pozri 5.7
   position: number;      // poradie v sete
   starred: boolean;
   stage: 0 | 1 | 2 | 3 | 4;
   lastAnsweredAt?: number;
+  meaning?: string;      // voliteľná definícia v jazyku pojmu (angličtina); v rozhraní „Definition"
+  examples?: string;     // voliteľné 1–2 príkladové vety, každá na samostatnom riadku; v rozhraní „Examples"
 }
 
 interface Setting { key: string; value: unknown } // accent, theme, flashcard options
@@ -251,6 +284,7 @@ Indexy: `sets: id, updatedAt, lastStudiedAt`, `cards: id, setId, [setId+position
   - Set s rovnakým ID sa nahradí celý, vrátane všetkých jeho kartičiek a pokroku.
   - Zapisuje v jednej transakcii.
   - Nastavenia sa neexportujú.
+  - Voliteľné polia `meaning` a `examples` sa exportujú, ak sú vyplnené. Import ich overí (ak sú prítomné, musia to byť reťazce); zálohy bez nich ostávajú platné.
 
 ### 6.3 Trvácnosť
 
@@ -342,7 +376,7 @@ Presne podľa schváleného návrhu (`docs/design/screens-v1.html`):
   - `pasteParser`: oddeľovače, poradie priority, pomlčky bez medzier, chybné riadky.
   - `answerCheck`: normalizácia, diakritika (aj slovenská), varianty cez `, / ;` v oboch smeroch, `to`/členy len pri angličtine, hranice tolerancie preklepov, krátke slová.
   - `learn/engine`: výber do kola, poradie priorít, typ otázky podľa `stage`, všetky prechody `stage` vrátane návratu o krok pri chybe, opakovanie chýb (max 2×), koniec kola, dokončenie setu (stage 4), distraktory (bez duplicít, malé sety). Deterministické cez seedovaný RNG.
-  - `backup`: export → import vráti rovnaké dáta, odmietnutie neplatných súborov.
+  - `backup`: export → import vráti rovnaké dáta (aj voliteľné polia `meaning` a `examples`), odmietnutie neplatných súborov.
 - **Komponentové testy (RTL + `fake-indexeddb`):**
   - vytvorenie setu vložením zoznamu → stránka setu ukáže kartičky,
   - Learn: správny výber → ďalšia otázka toho slovíčka je písanie anglického pojmu, po ňom písanie definície,
