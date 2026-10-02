@@ -1,5 +1,6 @@
 import { db } from './schema';
 import type { Card, Stage, StudySet } from './types';
+import { normalizeCardDetails } from '../lib/cardDetails';
 import { requestPersistentStorage } from '../lib/storage';
 
 export interface Backup {
@@ -65,8 +66,8 @@ function toCard(value: unknown): Card | null {
   if (examples !== undefined && !isString(examples)) return null;
   const card: Card = { id, setId, term, definition, position, starred, stage: stage as Stage };
   if (lastAnsweredAt !== undefined) card.lastAnsweredAt = lastAnsweredAt;
-  if (meaning !== undefined) card.meaning = meaning;
-  if (examples !== undefined) card.examples = examples;
+  // blank or whitespace-only extras (hand-edited or foreign files) are not stored, same as when a card is saved (spec 5.7)
+  Object.assign(card, normalizeCardDetails({ meaning, examples }));
   return card;
 }
 

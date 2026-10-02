@@ -211,6 +211,23 @@ describe('updateSet with card details', () => {
     expect(await progressOf(cardId)).toEqual({ stage: 3, starred: true, lastAnsweredAt: 500 });
   });
 
+  it('keeps unknown stored fields of a kept card, and a cleared card is exported without the extras', async () => {
+    const { id, cardId } = await setWithOneCard({ meaning: 'old meaning', examples: 'Old one.' });
+    await db.cards.update(cardId, { legacy: 'kept' } as never);
+    await updateSet(id, {
+      title: 'T',
+      definitionLang: 'sk',
+      cards: [{ id: cardId, term: 'gate', definition: 'brána', meaning: ' ', examples: '\n' }],
+    });
+    const [card] = await rawCards(id);
+    expect(card.legacy).toBe('kept');
+    expect(has(card, 'meaning')).toBe(false);
+    expect(has(card, 'examples')).toBe(false);
+    const text = serializeBackup(await createBackup());
+    expect(text).not.toContain('"meaning"');
+    expect(text).not.toContain('"examples"');
+  });
+
   it('gives new cards their extras and omits empty ones', async () => {
     const { id } = await setWithOneCard();
     await updateSet(id, {
@@ -301,6 +318,45 @@ describe('backup with card details', () => {
     const parsed = parseBackup(file({ ...validCard, meaning: 'm' }));
     expect(parsed.cards[0].meaning).toBe('m');
     expect(has(parsed.cards[0], 'examples')).toBe(false);
+  });
+
+  it.each([
+    ['empty strings', '', ''],
+    ['a space and an empty string', ' ', ''],
+    ['whitespace and line breaks', ' ', ' \r\n '],
+  ])('accepts blank meaning and examples (%s) but does not store them', (_name, meaning, examples) => {
+    const [card] = parseBackup(file({ ...validCard, meaning, examples })).cards;
+    expect(has(card, 'meaning')).toBe(false);
+    expect(has(card, 'examples')).toBe(false);
+    expect(Object.keys(card).sort()).toEqual(['definition', 'id', 'position', 'setId', 'stage', 'starred', 'term']);
+  });
+
+  it('stores meaning and examples from a file in normalized form', () => {
+    const [card] = parseBackup(file({ ...validCard, meaning: '  m ', examples: 'a\r\n\r\nb ' })).cards;
+    expect(card.meaning).toBe('m');
+    expect(card.examples).toBe('a\nb');
+  });
+
+  it('keeps one normalized extra and drops the blank one', () => {
+    const [card] = parseBackup(file({ ...validCard, meaning: ' ', examples: ' Only one. ' })).cards;
+    expect(has(card, 'meaning')).toBe(false);
+    expect(card.examples).toBe('Only one.');
+  });
+
+  it('round-trips a set with and without extras to exactly the same stored rows', async () => {
+    const id = await createSet({
+      title: 'Travel',
+      definitionLang: 'sk',
+      cards: [
+        { term: 'a', definition: '1', meaning: 'm', examples: 'x\ny' },
+        { term: 'b', definition: '2', meaning: '', examples: undefined },
+      ],
+    });
+    const before = await rawCards(id);
+    const text = serializeBackup(await createBackup());
+    await resetDb();
+    await importBackup(parseBackup(text));
+    expect(await rawCards(id)).toStrictEqual(before);
   });
 
   const notStrings: unknown[] = [7, 0, null, true, false, ['a'], [], { text: 'a' }, {}];
