@@ -57,12 +57,16 @@ function toSet(value: unknown): StudySet | null {
 
 function toCard(value: unknown): Card | null {
   if (!isObject(value)) return null;
-  const { id, setId, term, definition, position, starred, stage, lastAnsweredAt } = value;
+  const { id, setId, term, definition, position, starred, stage, lastAnsweredAt, meaning, examples } = value;
   if (!isString(id) || !isString(setId) || !isString(term) || !isString(definition)) return null;
   if (!isNumber(position) || typeof starred !== 'boolean' || !STAGES.has(stage)) return null;
   if (lastAnsweredAt !== undefined && !isNumber(lastAnsweredAt)) return null;
+  if (meaning !== undefined && !isString(meaning)) return null;
+  if (examples !== undefined && !isString(examples)) return null;
   const card: Card = { id, setId, term, definition, position, starred, stage: stage as Stage };
   if (lastAnsweredAt !== undefined) card.lastAnsweredAt = lastAnsweredAt;
+  if (meaning !== undefined) card.meaning = meaning;
+  if (examples !== undefined) card.examples = examples;
   return card;
 }
 

@@ -14,11 +14,16 @@ export interface Card {
   id: string;
   setId: string;
   term: string;
+  /** The card's translation (UI label "Translation"); may list comma-separated alternatives. Checked in Learn. */
   definition: string;
   position: number;
   starred: boolean;
   stage: Stage;
   lastAnsweredAt?: number;
+  /** Optional definition in the term's language, English (UI label "Definition"). Never checked in Learn. */
+  meaning?: string;
+  /** Optional example sentences, 1-2, separated by `\n` (UI label "Examples"). Never checked in Learn. */
+  examples?: string;
 }
 
 export interface SettingRow {

@@ -2,6 +2,7 @@
 
 import { db } from './schema';
 import type { Card, StudySet } from './types';
+import { normalizeCardDetails } from '../lib/cardDetails';
 import { newId } from '../lib/id';
 import { countStatuses, type StatusCounts } from '../lib/progress';
 import { requestPersistentStorage } from '../lib/storage';
@@ -9,7 +10,12 @@ import { requestPersistentStorage } from '../lib/storage';
 export interface CardDraft {
   id?: string;
   term: string;
+  /** The card's translation (UI label "Translation"). */
   definition: string;
+  /** Optional definition (UI label "Definition"); stored trimmed, omitted when empty. */
+  meaning?: string;
+  /** Optional example sentences, one per line (UI label "Examples"); lines are trimmed, empty lines dropped, omitted when empty. */
+  examples?: string;
 }
 
 export interface SetDraft {
@@ -33,6 +39,7 @@ function newCard(setId: string, draft: CardDraft, position: number): Card {
     position,
     starred: false,
     stage: 0,
+    ...normalizeCardDetails(draft),
   };
 }
 
@@ -60,8 +67,9 @@ export async function createSet(draft: SetDraft, now: number = Date.now()): Prom
 
 /**
  * Replaces the set's title, language and cards in one transaction. A draft card with an `id` of this set keeps its stage,
- * star and answer time; a draft card without one (or with an id from another set) becomes a new card; cards missing from
- * the draft are deleted together with their progress. The draft is not validated here (the editor does that).
+ * star and answer time (its optional `meaning` and `examples` are replaced by the draft's normalized values, and removed
+ * when the draft's are empty or absent); a draft card without one (or with an id from another set) becomes a new card; cards
+ * missing from the draft are deleted together with their progress. The draft is not validated here (the editor does that).
  * Throws, and writes nothing, when the set does not exist.
  */
 export async function updateSet(setId: string, draft: SetDraft, now: number = Date.now()): Promise<void> {
@@ -75,7 +83,11 @@ export async function updateSet(setId: string, draft: SetDraft, now: number = Da
       const previous = c.id ? byId.get(c.id) : undefined;
       if (!previous) return newCard(setId, c, position);
       kept.add(previous.id);
-      return { ...previous, term: c.term.trim(), definition: c.definition.trim(), position };
+      const card: Card = { ...previous, term: c.term.trim(), definition: c.definition.trim(), position };
+      // the draft is the source of truth for the extras: an empty or absent value removes the stored property
+      delete card.meaning;
+      delete card.examples;
+      return Object.assign(card, normalizeCardDetails(c));
     });
     await db.cards.bulkDelete(existing.filter((c) => !kept.has(c.id)).map((c) => c.id));
     await db.cards.bulkPut(rows);
