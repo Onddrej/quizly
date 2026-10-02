@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useSettings } from './SettingsContext';
 
 /** Applies the theme preference to <html data-theme> and keeps the system bar color in sync. */
 export function ThemeSync() {
   const { theme } = useSettings();
 
-  useEffect(() => {
+  // A layout effect applies data-theme before the browser paints, so there is no flash of the wrong theme.
+  useLayoutEffect(() => {
     const root = document.documentElement;
     if (theme === 'system') delete root.dataset.theme;
     else root.dataset.theme = theme;
