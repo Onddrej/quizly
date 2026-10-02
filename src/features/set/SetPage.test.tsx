@@ -100,3 +100,80 @@ describe('SetPage terms list card details', () => {
     expect(within(departure).getByText('the act of leaving a place')).toBeInTheDocument();
   });
 });
+
+describe('SetPage options and navigation', () => {
+  it('resets progress after confirmation and keeps the stars', async () => {
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: [{ term: 'gate', definition: 'brána' }, { term: 'delay', definition: 'meškanie' }] });
+    const [a, b] = await listCards(id);
+    await db.cards.update(a.id, { stage: 4, starred: true, lastAnsweredAt: 1 });
+    await db.cards.update(b.id, { stage: 2 });
+    await db.sets.update(id, { learnRound: 3 });
+    const { user } = renderRoute(`/sets/${id}`);
+    await user.click(await screen.findByRole('button', { name: 'Set options' }));
+    await user.click(screen.getByRole('button', { name: 'Reset progress' }));
+    expect(screen.getByText('Reset progress? All terms go back to not studied.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(await screen.findByText('Progress reset')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const after = await listCards(id);
+    expect(after.map((c) => c.stage)).toEqual([0, 0]);
+    expect(after[0].starred).toBe(true);
+    expect((await db.sets.get(id))?.learnRound).toBe(1);
+    expect(screen.getByRole('img', { name: '0 mastered, 0 learning, 2 not studied' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set options' })).toHaveFocus();
+  });
+
+  it('keeps the set when the delete confirmation is cancelled', async () => {
+    const id = await createSet({ title: 'Travel', definitionLang: 'sk', cards: [{ term: 'gate', definition: 'brána' }] });
+    const { user } = renderRoute(`/sets/${id}`);
+    await user.click(await screen.findByRole('button', { name: 'Set options' }));
+    await user.click(screen.getByRole('button', { name: 'Delete set' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete set' })).toBeInTheDocument();
+    expect(await db.sets.count()).toBe(1);
+  });
+
+  it('links Edit set to the editor and Back to Home', async () => {
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: [{ term: 'gate', definition: 'brána' }] });
+    const { user, router } = renderRoute(`/sets/${id}`);
+    await user.click(await screen.findByRole('button', { name: 'Set options' }));
+    expect(screen.getByRole('link', { name: 'Edit set' })).toHaveAttribute('href', `/sets/${id}/edit`);
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(router.state.location.pathname).toBe('/');
+  });
+});
+
+describe('SetPage modes and list', () => {
+  it('enables Learn with two cards and disables both modes when the set is empty', async () => {
+    const two = await createSet({ title: 'Two', definitionLang: 'sk', cards: [{ term: 'a', definition: 'b' }, { term: 'c', definition: 'd' }] });
+    const empty = await createSet({ title: 'Empty', definitionLang: 'sk', cards: [] });
+    const view = renderRoute(`/sets/${two}`);
+    expect(await screen.findByRole('link', { name: /Learn/ })).toHaveAttribute('href', `/sets/${two}/learn`);
+    view.unmount();
+    renderRoute(`/sets/${empty}`);
+    expect(await screen.findByRole('heading', { name: 'Empty' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Flashcards/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Learn/ })).not.toBeInTheDocument();
+  });
+
+  it('stars only the tapped term and un-stars it on a second tap', async () => {
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: [{ term: 'gate', definition: 'brána' }, { term: 'delay', definition: 'meškanie' }] });
+    const { user } = renderRoute(`/sets/${id}`);
+    await user.click(await screen.findByRole('button', { name: 'Star delay' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Star delay' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByRole('button', { name: 'Star gate' })).toHaveAttribute('aria-pressed', 'false');
+    await user.click(screen.getByRole('button', { name: 'Star delay' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Star delay' })).toHaveAttribute('aria-pressed', 'false'));
+  });
+
+  it('previews at most 10 cards', async () => {
+    const cards = Array.from({ length: 12 }, (_, i) => ({ term: `w${i}`, definition: `d${i}` }));
+    const id = await createSet({ title: 'Big', definitionLang: 'sk', cards });
+    renderRoute(`/sets/${id}`);
+    const preview = await screen.findByLabelText('Card preview');
+    expect(preview.children).toHaveLength(10);
+    expect(within(preview).queryByText('w10')).not.toBeInTheDocument();
+    expect(screen.getByText('12 terms · English → Slovak')).toBeInTheDocument();
+  });
+});
