@@ -1,0 +1,39 @@
+/* Answer side of a card. Absent parts are not rendered, and spacing comes only from `gap`, so nothing leaves a hole. */
+.wrap {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.translation { margin: 0; color: var(--ink); }
+.meaning { margin: 0; color: var(--ink-2); font-weight: 400; }
+.examples {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  color: var(--ink-2);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Set page list: sits under the term headline, left aligned. */
+.row .translation { font-size: 15px; font-weight: 600; }
+.row .meaning { font-size: 14px; }
+.row .examples { font-size: 13px; }
+
+/* Flashcard side: centered, large; long content scrolls inside the card. */
+.face {
+  gap: 8px;
+  align-self: center;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 0 12px;
+  text-align: center;
+}
+.face .translation { font-size: 28px; font-weight: 700; line-height: 1.2; text-wrap: balance; }
+.face .meaning { font-size: 17px; line-height: 1.4; }
+.face .examples { font-size: 15px; line-height: 1.4; gap: 4px; }
