@@ -141,4 +141,37 @@ describe('HomePage', () => {
     await screen.findByRole('heading', { name: 'Your sets' });
     expect(screen.queryByText('Create your first set')).not.toBeInTheDocument();
   });
+
+  it('ignores a whitespace-only search: every set stays listed and the resume card stays', async () => {
+    const travel = await createSet({ title: 'Travel', definitionLang: 'sk', cards }, 1000);
+    await createSet({ title: 'Kitchen', definitionLang: 'sk', cards }, 2000);
+    await markStudied(travel, 3000);
+    const { user } = renderRoute('/');
+    await user.click(await screen.findByRole('button', { name: 'Search sets' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search sets' }), '   ');
+    expect(screen.getByRole('heading', { name: 'Jump back in' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /^(Travel|Kitchen)/ })).toHaveLength(2);
+    expect(screen.queryByText(/No sets match/)).not.toBeInTheDocument();
+  });
+
+  it('searches ignoring diacritics and case, in both directions', async () => {
+    await createSet({ title: 'Kuchyňa', definitionLang: 'sk', cards }, 1000);
+    await createSet({ title: 'kuchyna', definitionLang: 'sk', cards }, 2000);
+    await createSet({ title: 'Travel', definitionLang: 'sk', cards }, 3000);
+    const { user } = renderRoute('/');
+    await user.click(await screen.findByRole('button', { name: 'Search sets' }));
+    const box = screen.getByRole('searchbox', { name: 'Search sets' });
+    await user.type(box, 'kuchyna');
+    expect(screen.getAllByRole('link', { name: /^[Kk]uchy/ })).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: /^Travel/ })).not.toBeInTheDocument();
+    await user.clear(box);
+    await user.type(box, 'KUCHYŇA');
+    expect(screen.getAllByRole('link', { name: /^[Kk]uchy/ })).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: /^Travel/ })).not.toBeInTheDocument();
+  });
+
+  it('has a level-1 heading with the app name', async () => {
+    renderRoute('/');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Quizly' })).toBeInTheDocument();
+  });
 });

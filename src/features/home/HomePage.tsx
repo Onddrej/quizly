@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, GalleryVerticalEnd, Search, Target, X } from 'lucide-react';
 import { listSetSummaries, type SetSummary } from '../../db/sets';
+import { normalize } from '../../lib/text';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { TabBar } from '../../ui/TabBar';
@@ -24,7 +25,7 @@ function ResumeCard({ summary }: { summary: SetSummary }) {
     <article className={`card ${styles.resume}`}>
       <div className={styles.resumeTop}>
         <div>
-          <p className={styles.rowTitle}>{set.title}</p>
+          <p className={styles.resumeTitle}>{set.title}</p>
           <p className={styles.meta}>
             {summary.total} {summary.total === 1 ? 'term' : 'terms'}
           </p>
@@ -50,10 +51,11 @@ export function HomePage() {
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
 
+  const q = query.trim();
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (summaries ?? []).filter((s) => !q || s.set.title.toLowerCase().includes(q));
-  }, [summaries, query]);
+    const needle = normalize(q);
+    return (summaries ?? []).filter((s) => !needle || normalize(s.set.title).includes(needle));
+  }, [summaries, q]);
   const resume = summaries?.find((s) => s.set.lastStudiedAt !== undefined);
 
   const searchToggle = (
@@ -69,7 +71,7 @@ export function HomePage() {
 
   return (
     <Page
-      top={<TopBar left={<span className={styles.wordmark}>Quizly</span>} right={summaries?.length ? searchToggle : null} />}
+      top={<TopBar left={<h1 className={styles.wordmark}>Quizly</h1>} right={summaries?.length ? searchToggle : null} />}
       bottom={<TabBar />}
     >
       {summaries === undefined ? null : summaries.length === 0 ? (
@@ -89,6 +91,7 @@ export function HomePage() {
             <input
               autoFocus
               type="search"
+              enterKeyHint="search"
               aria-label="Search sets"
               placeholder="Search your sets"
               className={styles.search}
@@ -96,7 +99,7 @@ export function HomePage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           )}
-          {resume && !query && (
+          {resume && !q && (
             <section className={styles.section} aria-labelledby="resume-heading">
               <h2 id="resume-heading" className={styles.sectionTitle}>
                 Jump back in
@@ -109,7 +112,7 @@ export function HomePage() {
               Your sets
             </h2>
             {filtered.length === 0 ? (
-              <p className={styles.noResults}>No sets match “{query}”.</p>
+              <p className={styles.noResults}>No sets match “{q}”.</p>
             ) : (
               <ul className={styles.list}>
                 {filtered.map((s) => (

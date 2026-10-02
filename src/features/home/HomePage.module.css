@@ -9,10 +9,12 @@
   font-size: 16px;
 }
 .search:focus { outline: none; border-color: var(--accent); }
+.search::-webkit-search-cancel-button { display: none; }
 .section { display: grid; gap: 10px; }
 .sectionTitle { font-size: 15px; font-weight: 700; color: var(--ink-2); }
 .resume { display: grid; gap: 12px; padding: 18px; }
 .resumeTop { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.resumeTitle { font-size: 17px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
 .chip {
   display: inline-flex;
   align-items: center;
