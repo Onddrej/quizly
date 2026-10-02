@@ -12,6 +12,7 @@ import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
 import { SpeakButton } from '../../ui/SpeakButton';
 import { StageBar } from '../../ui/StageBar';
+import { CardBack } from '../../ui/CardBack';
 import { Sheet } from '../../ui/Sheet';
 import { InlineConfirm } from '../../ui/InlineConfirm';
 import { useToast } from '../../ui/Toast';
@@ -169,9 +170,7 @@ export function SetPage() {
               <span className={styles.t} lang="en">
                 {c.term}
               </span>
-              <span className={styles.d} lang={current.definitionLang}>
-                {c.definition}
-              </span>
+              <CardBack card={c} lang={current.definitionLang} variant="row" />
             </span>
             <SpeakButton text={c.term} />
             <IconButton

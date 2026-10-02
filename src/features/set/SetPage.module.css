@@ -47,8 +47,7 @@
 .terms { display: grid; gap: 8px; }
 .term { display: flex; align-items: center; gap: 4px; padding: 10px 6px 10px 16px; }
 .termText { flex: 1; min-width: 0; display: grid; }
-.t { font-weight: 700; overflow-wrap: anywhere; }
-.d { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.t { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .menu { display: grid; gap: 4px; }
 .menuItem {
   display: flex;
