@@ -66,3 +66,22 @@ describe('validateDraft card details', () => {
     expect(result.cards).toEqual([]);
   });
 });
+
+describe('validateDraft whitespace-only fields in a filled row', () => {
+  it('flags a whitespace-only translation instead of saving it blank', () => {
+    const result = validateDraft('Travel', [row('a', 'gate', '   ')]);
+    expect(result.ok).toBe(false);
+    expect(result.errors.rows).toEqual({ a: { definition: 'Add a translation' } });
+  });
+
+  it('flags a whitespace-only term instead of saving it blank', () => {
+    const result = validateDraft('Travel', [row('a', '  \t', 'brána')]);
+    expect(result.ok).toBe(false);
+    expect(result.errors.rows).toEqual({ a: { term: 'Add a term' } });
+  });
+
+  it('keys row errors by the editor row key, also for existing cards', () => {
+    const result = validateDraft('Travel', [row('k1', 'gate', '', 'card-1')]);
+    expect(result.errors.rows).toEqual({ k1: { definition: 'Add a translation' } });
+  });
+});

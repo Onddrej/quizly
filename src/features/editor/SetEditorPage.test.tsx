@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
@@ -8,6 +8,12 @@ import { createSet } from '../../db/sets';
 import { listCards, setCardStage } from '../../db/cards';
 
 beforeEach(resetDb);
+
+// pasting keeps longer values from re-rendering the whole page once per keystroke
+const fill = async (user: UserEvent, field: HTMLElement, text: string) => {
+  await user.click(field);
+  await user.paste(text);
+};
 
 describe('SetEditorPage', () => {
   it('creates a set from a pasted list', async () => {
@@ -76,11 +82,6 @@ describe('SetEditorPage vocabulary', () => {
 
 describe('SetEditorPage card details', () => {
   const OPEN = { name: 'Add definition and examples' };
-  // pasting keeps these long values from re-rendering the whole page once per keystroke
-  const fill = async (user: UserEvent, field: HTMLElement, text: string) => {
-    await user.click(field);
-    await user.paste(text);
-  };
   const aSet = (cards: { term: string; definition: string; meaning?: string; examples?: string }[]) =>
     createSet({ title: 'Airport', definitionLang: 'sk', cards });
 
@@ -246,5 +247,86 @@ describe('SetEditorPage card details', () => {
     expect(screen.getByLabelText('Definition')).toHaveValue('a door at an airport');
     expect(screen.getByDisplayValue('layover')).toBeInTheDocument();
     expect(screen.getAllByLabelText('Term')).toHaveLength(2);
+  });
+});
+
+describe('SetEditorPage leaving and saving', () => {
+  it('shows the not-found page for an unknown set', async () => {
+    renderRoute('/sets/nope/edit');
+    expect(await screen.findByText("This set doesn't exist")).toBeInTheDocument();
+  });
+
+  it('removes a deleted card together with its progress on save, and keeps the other card', async () => {
+    const id = await createSet({
+      title: 'T',
+      definitionLang: 'sk',
+      cards: [
+        { term: 'gate', definition: 'brána' },
+        { term: 'delay', definition: 'meškanie' },
+      ],
+    });
+    const [first, second] = await listCards(id);
+    await setCardStage(first.id, 3);
+    await setCardStage(second.id, 2);
+    const { user } = renderRoute(`/sets/${id}/edit`);
+    await screen.findByDisplayValue('gate');
+    await user.click(screen.getByRole('button', { name: 'Delete card 1' }));
+    expect(screen.queryByDisplayValue('gate')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete card 1' })).toBeInTheDocument(); // numbering closes up
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('heading', { name: 'T' });
+    expect(await db.cards.get(first.id)).toBeUndefined();
+    expect(await db.cards.get(second.id)).toMatchObject({ term: 'delay', stage: 2 });
+  });
+
+  it('Keep editing dismisses the prompt, stays on the page and keeps the changes', async () => {
+    const { user, router } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'Draft');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByText('Discard changes?')).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/create');
+    expect(screen.getByLabelText('Title')).toHaveValue('Draft');
+  });
+
+  it('closes without a prompt when nothing was changed', async () => {
+    const { user } = renderRoute('/create');
+    await screen.findByLabelText('Title');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(await screen.findByText('Create your first set')).toBeInTheDocument();
+  });
+
+  it('toasts and stays when saving fails, and Save works again', async () => {
+    const { user, router } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'T');
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await fill(user, screen.getAllByLabelText('Translation')[0], 'brána');
+    const spy = vi.spyOn(db, 'transaction').mockRejectedValueOnce(new Error('disk full'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/create');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    spy.mockRestore();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('heading', { name: 'T' });
+    expect(await db.sets.count()).toBe(1);
+  });
+
+  it('creates only one set when Save is tapped twice while saving', async () => {
+    const { user } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'T');
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await fill(user, screen.getAllByLabelText('Translation')[0], 'brána');
+    const real = db.transaction.bind(db) as (...args: unknown[]) => Promise<unknown>;
+    const spy = vi
+      .spyOn(db, 'transaction')
+      .mockImplementation(((...args: unknown[]) => new Promise((resolve) => setTimeout(resolve, 100)).then(() => real(...args))) as never);
+    const save = screen.getByRole('button', { name: 'Save' });
+    await user.click(save);
+    expect(save).toBeDisabled();
+    await user.click(save);
+    await screen.findByRole('heading', { name: 'T' });
+    spy.mockRestore();
+    await waitFor(async () => expect(await db.sets.count()).toBe(1));
   });
 });
