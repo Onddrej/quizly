@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
@@ -9,11 +9,11 @@ import type { Stage } from '../../db/types';
 const pairs = { luggage: 'batožina', departure: 'odchod, odlet' } as const;
 const typos: Record<string, string> = { luggage: 'lugage', departure: 'departre' };
 
-async function setWithStage(stage: Stage) {
+async function setWithStage(stage: Stage, definitions: Record<string, string> = pairs) {
   const id = await createSet({
     title: 'Travel',
     definitionLang: 'sk',
-    cards: Object.entries(pairs).map(([term, definition]) => ({ term, definition })),
+    cards: Object.entries(definitions).map(([term, definition]) => ({ term, definition })),
   });
   await db.cards.where('setId').equals(id).modify({ stage });
   return id;
@@ -28,6 +28,8 @@ function shownDefinitionTerm(): keyof typeof pairs {
   const el = screen.getByText(/^(batožina|odchod, odlet)$/);
   return el.textContent === 'batožina' ? 'luggage' : 'departure';
 }
+
+const cardOf = async (term: string) => (await db.cards.filter((c) => c.term === term).first())!;
 
 beforeEach(resetDb);
 
@@ -95,6 +97,102 @@ describe('LearnPage', () => {
     expect(screen.getByText('2 of 2 correct. 2 terms are now mastered.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: "You've mastered all 2 terms" })).toBeInTheDocument();
+  });
+});
+
+describe('LearnPage behavior', () => {
+  it('"Don\'t know?" shows the answer without an "I was right" button and saves the lower stage and the answer time', async () => {
+    const id = await setWithStage(3);
+    const before = Date.now();
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const term = shownTerm();
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    expect(screen.getByText("Here's the answer")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I was right' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => expect((await cardOf(term)).stage).toBe(2));
+    expect((await cardOf(term)).lastAnsweredAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('a wrong multiple choice answer lowers the stage and the term comes back in the same round', async () => {
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const first = shownTerm();
+    const wrong = pairs[first === 'luggage' ? 'departure' : 'luggage'];
+    await user.click(screen.getByRole('button', { name: wrong }));
+    expect(screen.getByText('Not quite')).toBeInTheDocument();
+    expect(screen.getByText(/You'll see it again this round/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(shownTerm()).not.toBe(first));
+    await user.click(screen.getByRole('button', { name: pairs[shownTerm()] }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(shownTerm()).toBe(first));
+    expect(screen.getByRole('group').querySelectorAll('button')).toHaveLength(2);
+    expect((await cardOf(first)).stage).toBe(1);
+  });
+
+  it('numbers the rounds: finishing round 1 saves learnRound 2 and the next round is titled Round 2', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    for (let i = 0; i < 2; i++) {
+      await waitFor(() => expect(screen.getByLabelText('Type the English term')).toBeEnabled());
+      await user.type(screen.getByLabelText('Type the English term'), shownDefinitionTerm());
+      await user.click(screen.getByRole('button', { name: 'Answer' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+    }
+    expect(await screen.findByRole('heading', { name: 'Round 1 done' })).toBeInTheDocument();
+    await waitFor(async () => expect((await db.sets.get(id))?.learnRound).toBe(2));
+    await user.click(screen.getByRole('button', { name: 'Continue to round 2' }));
+    expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('Type the translation in Slovak')).toBeInTheDocument();
+    expect((await db.sets.get(id))?.learnRound).toBe(2);
+  });
+
+  it('Study again resets every card and the round number', async () => {
+    const id = await setWithStage(4);
+    await db.sets.update(id, { learnRound: 5 });
+    await db.cards.where('setId').equals(id).modify({ lastAnsweredAt: 123 });
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: 'Study again' }));
+    expect(await screen.findByRole('heading', { name: 'Round 1' })).toBeInTheDocument();
+    expect(await screen.findByText('Choose the matching translation')).toBeInTheDocument();
+    const cards = await db.cards.where('setId').equals(id).toArray();
+    expect(cards.every((c) => c.stage === 0 && c.lastAnsweredAt === undefined)).toBe(true);
+    expect((await db.sets.get(id))?.learnRound).toBe(1);
+  });
+
+  it('says "Any one of these is enough" when a comma-separated translation was missed', async () => {
+    const id = await setWithStage(3, { luggage: 'batožina, kufor', departure: 'odchod, odlet' });
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the translation in Slovak'), 'nonsense');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText(/Any one of these is enough/)).toBeInTheDocument();
+  });
+
+  it('Close returns to the set page', async () => {
+    const id = await setWithStage(0);
+    const { user, router } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(router.state.location.pathname).toBe(`/sets/${id}`);
+  });
+
+  it('keeps going and shows a toast when saving the answer fails', async () => {
+    const id = await setWithStage(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const spy = vi.spyOn(db.cards, 'update').mockRejectedValue(new Error('boom'));
+    try {
+      await user.type(screen.getByLabelText('Type the translation in Slovak'), 'nonsense');
+      await user.click(screen.getByRole('button', { name: 'Answer' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByLabelText('Type the translation in Slovak')).toBeEnabled());
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
