@@ -421,3 +421,27 @@ describe('LearnPage small sets', () => {
     expect((await db.sets.get(id))?.lastStudiedAt).toBeUndefined();
   });
 });
+
+describe('LearnPage progress and input', () => {
+  it('reads the progress numbers as "N mastered" and "N terms" to a screen reader', async () => {
+    const id = await setWithStage(0, { luggage: 'batožina', departure: 'odchod, odlet', gate: 'brána' });
+    await db.cards.filter((c) => c.setId === id && c.term === 'luggage').modify({ stage: 4 });
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const mastered = screen.getByText('mastered', { selector: '.visually-hidden' }).parentElement!;
+    expect(mastered).toHaveTextContent('1 mastered');
+    expect(mastered).not.toHaveAttribute('aria-label');
+    const total = screen.getByText('terms', { selector: '.visually-hidden' }).parentElement!;
+    expect(total).toHaveTextContent('3 terms');
+    expect(total).not.toHaveAttribute('aria-label');
+    // The visible text is still just the two numbers.
+    expect(mastered.firstChild?.textContent).toBe('1');
+    expect(total.firstChild?.textContent).toBe('3');
+  });
+
+  it('asks the phone keyboard for a Go key on the answer input', async () => {
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    expect(await screen.findByLabelText('Type the English term')).toHaveAttribute('enterkeyhint', 'go');
+  });
+});

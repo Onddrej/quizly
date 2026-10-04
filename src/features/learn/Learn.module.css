@@ -8,7 +8,7 @@
 .word { min-height: 96px; display: flex; align-items: center; font-size: 30px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
 .ask { font-size: 14px; font-weight: 700; color: var(--ink-2); }
 
-.options { display: grid; gap: 10px; }
+.options { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .option {
   width: 100%;
   min-height: 56px;
@@ -26,7 +26,10 @@
   text-align: left;
   transition: border-color .15s ease-out, background-color .15s ease-out, opacity .15s ease-out;
 }
-.option:hover:not(:disabled) { border-color: var(--ink-2); }
+@media (hover: hover) {
+  .option:hover:not(:disabled) { border-color: var(--ink-2); }
+}
+.option span { min-width: 0; overflow-wrap: anywhere; }
 .option:disabled { cursor: default; }
 .correct { border-color: var(--good-fill); background: var(--good-soft); }
 .wrong { border-color: var(--bad-fill); background: var(--bad-soft); }

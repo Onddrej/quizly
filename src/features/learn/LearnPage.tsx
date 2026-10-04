@@ -262,12 +262,14 @@ export function LearnPage() {
       }
     >
       <div className={styles.progress}>
-        <span className={styles.done} aria-label={`${counts.mastered} mastered`}>
+        <span className={styles.done}>
           {counts.mastered}
+          <span className="visually-hidden"> mastered</span>
         </span>
         <StageBar counts={counts} size="sm" />
-        <span className={styles.total} aria-label={`${cards.length} terms`}>
+        <span className={styles.total}>
           {cards.length}
+          <span className="visually-hidden"> terms</span>
         </span>
       </div>
       {type === 'choice' ? (

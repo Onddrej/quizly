@@ -58,6 +58,7 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
           placeholder="Type the answer"
           autoCapitalize="off"
           autoCorrect="off"
+          enterKeyHint="go"
           spellCheck={false}
           className={`${styles.input} ${resultClass}`}
           onChange={(e) => setValue(e.target.value)}
