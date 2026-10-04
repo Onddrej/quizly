@@ -38,3 +38,67 @@ describe('flashcardReducer', () => {
     expect(isFinished(initialFlashcardState([]))).toBe(false);
   });
 });
+
+describe('flashcardReducer flip, undo, tally and start details', () => {
+  const start = () => initialFlashcardState(['a', 'b', 'c']);
+  const sort = (s: ReturnType<typeof start>, result: 'know' | 'learning') => flashcardReducer(s, { type: 'sort', result });
+
+  it('flip toggles back and forth', () => {
+    const once = flashcardReducer(start(), { type: 'flip' });
+    expect(flashcardReducer(once, { type: 'flip' }).flipped).toBe(false);
+  });
+
+  it('flip does nothing once the deck is finished or empty', () => {
+    let s = start();
+    for (let i = 0; i < 3; i++) s = sort(s, 'know');
+    expect(flashcardReducer(s, { type: 'flip' })).toBe(s);
+    const empty = initialFlashcardState([]);
+    expect(flashcardReducer(empty, { type: 'flip' })).toBe(empty);
+  });
+
+  it('undo steps back one card at a time, newest first', () => {
+    let s = sort(sort(sort(start(), 'know'), 'learning'), 'know');
+    s = flashcardReducer(s, { type: 'undo' });
+    expect(s).toMatchObject({ index: 2, history: ['a', 'b'] });
+    expect(s.results).toEqual({ a: 'know', b: 'learning' });
+    expect(isFinished(s)).toBe(false);
+    s = flashcardReducer(s, { type: 'undo' });
+    expect(s).toMatchObject({ index: 1, history: ['a'] });
+    expect(s.results).toEqual({ a: 'know' });
+  });
+
+  it('undo after finishing reopens the last card, and a flipped card is shown front side again', () => {
+    let s = sort(sort(sort(start(), 'know'), 'know'), 'learning');
+    expect(isFinished(s)).toBe(true);
+    s = flashcardReducer(flashcardReducer(s, { type: 'undo' }), { type: 'flip' });
+    expect(s.flipped).toBe(true);
+    s = flashcardReducer(s, { type: 'undo' });
+    expect(s.flipped).toBe(false);
+    expect(s.index).toBe(1);
+  });
+
+  it('undo clears the result so the card can be sorted the other way', () => {
+    let s = sort(start(), 'learning');
+    s = sort(flashcardReducer(s, { type: 'undo' }), 'know');
+    expect(s.results).toEqual({ a: 'know' });
+    expect(tally(s)).toEqual({ know: 1, learning: 0, learningIds: [] });
+  });
+
+  it('tally lists the learning ids in the order they were sorted', () => {
+    let s = initialFlashcardState(['a', 'b', 'c', 'd']);
+    s = sort(sort(sort(sort(s, 'learning'), 'know'), 'learning'), 'learning');
+    expect(tally(s)).toEqual({ know: 1, learning: 3, learningIds: ['a', 'c', 'd'] });
+  });
+
+  it('sort stores the id of the card at the current index, not the first one', () => {
+    let s = sort(start(), 'know');
+    s = sort(s, 'learning');
+    expect(s.history).toEqual(['a', 'b']);
+    expect(s.results).toEqual({ a: 'know', b: 'learning' });
+  });
+
+  it('a start with a new order does not keep flipped state', () => {
+    const flipped = flashcardReducer(start(), { type: 'flip' });
+    expect(flashcardReducer(flipped, { type: 'start', order: ['x'] }).flipped).toBe(false);
+  });
+});
