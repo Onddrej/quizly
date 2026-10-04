@@ -42,3 +42,5 @@
 .toggle[aria-expanded='true'] .chevron { transform: rotate(180deg); }
 .details { display: grid; gap: 14px; }
 .details[hidden] { display: none; }
+/* The discard prompt sits below the scrolling form, so taking focus never scrolls the list. */
+.confirm { flex: none; padding: 8px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }

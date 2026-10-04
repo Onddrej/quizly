@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { renderRoute } from '../../test/render';
@@ -328,5 +328,107 @@ describe('SetEditorPage leaving and saving', () => {
     await screen.findByRole('heading', { name: 'T' });
     spy.mockRestore();
     await waitFor(async () => expect(await db.sets.count()).toBe(1));
+  });
+});
+
+describe('SetEditorPage guidance and polish', () => {
+  afterEach(() => {
+    // jsdom has no scrollIntoView; the tests that spy on it install and remove it themselves
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  it('focuses and centers the Translation field after a failed save', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const { user } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'T');
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const translation = screen.getAllByLabelText('Translation')[0];
+    await waitFor(() => expect(translation).toHaveFocus());
+    expect(scrollIntoView).toHaveBeenLastCalledWith({ block: 'center' });
+    expect(scrollIntoView.mock.contexts.at(-1)).toBe(translation);
+  });
+
+  it('focuses the Title first, then the first card with an error, then the first card', async () => {
+    const { user } = renderRoute('/create');
+    const title = await screen.findByLabelText('Title');
+    await user.click(screen.getByRole('button', { name: 'Save' })); // no title and no card: the title comes first
+    await waitFor(() => expect(title).toHaveFocus());
+    await user.type(title, 'T');
+    await user.click(screen.getByRole('button', { name: 'Save' })); // only "Add at least one card" is left
+    expect(screen.getByText('Add at least one card')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByLabelText('Term')[0]).toHaveFocus());
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await fill(user, screen.getAllByLabelText('Translation')[0], 'brána');
+    await fill(user, screen.getAllByLabelText('Term')[1], 'delay'); // the second card lacks a translation
+    await user.clear(title);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(title).toHaveFocus());
+    await user.type(title, 'T');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getAllByLabelText('Translation')[1]).toHaveFocus());
+  });
+
+  it('focuses the first card with an error again when Save fails twice in a row', async () => {
+    const { user } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'T');
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const translation = screen.getAllByLabelText('Translation')[0];
+    await waitFor(() => expect(translation).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(translation).toHaveFocus());
+  });
+
+  it('drops an error as soon as its field is fixed, without pressing Save again', async () => {
+    const { user } = renderRoute('/create');
+    const title = await screen.findByLabelText('Title');
+    await fill(user, screen.getAllByLabelText('Term')[0], 'gate');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByText('Add a title')).toBeInTheDocument();
+    expect(screen.getByText('Add a translation')).toBeInTheDocument();
+    await fill(user, screen.getAllByLabelText('Translation')[0], 'brána');
+    expect(screen.queryByText('Add a translation')).not.toBeInTheDocument();
+    expect(screen.getByText('Add a title')).toBeInTheDocument();
+    await fill(user, title, 'T');
+    expect(screen.queryByText('Add a title')).not.toBeInTheDocument();
+  });
+
+  it('shows no errors before the first Save attempt', async () => {
+    const { user } = renderRoute('/create');
+    await fill(user, (await screen.findAllByLabelText('Term'))[0], 'gate');
+    expect(screen.queryByText('Add a translation')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add a title')).not.toBeInTheDocument();
+  });
+
+  it('shows the discard prompt below the form instead of at the top of the scrolling page', async () => {
+    const { user } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'Draft');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    const prompt = screen.getByRole('alertdialog', { name: 'Discard changes?' });
+    expect(screen.getByRole('main')).not.toContainElement(prompt);
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('focuses the Term field of a card added with Add card', async () => {
+    const { user } = renderRoute('/create');
+    await screen.findByLabelText('Title');
+    await user.click(screen.getByRole('button', { name: 'Add card' }));
+    const terms = screen.getAllByLabelText('Term');
+    expect(terms).toHaveLength(3);
+    await waitFor(() => expect(terms[2]).toHaveFocus());
+  });
+
+  it('marks the term as English and the translation with the set language', async () => {
+    const { user } = renderRoute('/create');
+    await screen.findByLabelText('Title');
+    expect(screen.getAllByLabelText('Term')[0]).toHaveAttribute('lang', 'en');
+    expect(screen.getAllByLabelText('Translation')[0]).toHaveAttribute('lang', 'sk');
+    await user.selectOptions(screen.getByLabelText('Translation language'), 'Czech');
+    expect(screen.getAllByLabelText('Translation')[0]).toHaveAttribute('lang', 'cs');
+    expect(screen.getAllByLabelText('Translation')[1]).toHaveAttribute('lang', 'cs');
+    expect(screen.getAllByLabelText('Term')[1]).toHaveAttribute('lang', 'en');
   });
 });

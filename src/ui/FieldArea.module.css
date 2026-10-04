@@ -9,6 +9,9 @@
   font-size: 16px;
   font-weight: 600;
   resize: vertical;
+  /* grow with the text so ordinary sentences are not scrolled inside the field; other browsers keep the rows attribute */
+  field-sizing: content;
+  min-height: calc(3em + 14px); /* two lines at line-height 1.5, plus the 6px paddings and the 2px underline */
 }
 .input:focus { outline: none; border-bottom-color: var(--star); }
 .input::placeholder { color: var(--ink-2); font-weight: 500; }

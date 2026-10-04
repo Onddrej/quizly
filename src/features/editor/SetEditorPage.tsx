@@ -29,6 +29,17 @@ function parseErrorText(error: ParseError): string {
     : `Line ${error.line}: needs a term and a definition`;
 }
 
+/** Where to send the user after a failed Save: the title, else the first card with an error, else the first card. */
+function firstInvalidId(errors: EditorErrors, rows: readonly EditorRow[]): string {
+  if (errors.title) return 'set-title';
+  for (const r of rows) {
+    const rowErrors = errors.rows?.[r.key];
+    if (rowErrors?.term) return `term-${r.key}`;
+    if (rowErrors?.definition) return `definition-${r.key}`;
+  }
+  return rows.length > 0 ? `term-${rows[0].key}` : 'paste-input';
+}
+
 interface CardDetailsProps {
   row: EditorRow;
   onChange: (patch: Pick<Partial<EditorRow>, 'meaning' | 'examples'>) => void;
@@ -93,12 +104,15 @@ export function SetEditorPage() {
   const [definitionLang, setDefinitionLang] = useState('sk');
   const [rows, setRows] = useState<EditorRow[]>(() => [emptyRow(), emptyRow()]);
   const [paste, setPaste] = useState('');
-  const [errors, setErrors] = useState<EditorErrors>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const leavingAfterSave = useRef(false);
 
   const parsed = useMemo(() => parsePastedList(paste), [paste]);
+  // Errors appear with the first Save attempt and then follow the form, so each one goes away as soon as its field is fixed.
+  const errors = useMemo<EditorErrors>(() => (submitted ? validateDraft(title, rows).errors : {}), [submitted, title, rows]);
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && !leavingAfterSave.current && currentLocation.pathname !== nextLocation.pathname,
@@ -120,6 +134,14 @@ export function SetEditorPage() {
     );
     setInitialized(true);
   }, [editing, initialized, loading, set, cards]);
+
+  // The control to focus and bring into view (the first error after a failed Save, the new card's Term after Add card).
+  useEffect(() => {
+    if (!focusRequest) return;
+    const el = document.getElementById(focusRequest.id);
+    el?.focus({ preventScroll: true });
+    el?.scrollIntoView?.({ block: 'center' });
+  }, [focusRequest]);
 
   if (editing && !loading && !set) return <NotFound title="This set doesn't exist" />;
   if (!initialized) return null;
@@ -143,8 +165,11 @@ export function SetEditorPage() {
 
   async function save() {
     const result = validateDraft(title, rows);
-    setErrors(result.errors);
-    if (!result.ok) return;
+    setSubmitted(true);
+    if (!result.ok) {
+      setFocusRequest({ id: firstInvalidId(result.errors, rows) });
+      return;
+    }
     setSaving(true);
     try {
       const draft = { title, definitionLang, cards: result.cards };
@@ -167,6 +192,20 @@ export function SetEditorPage() {
 
   return (
     <Page
+      bottom={
+        blocker.state === 'blocked' ? (
+          <div className={styles.confirm}>
+            <InlineConfirm
+              message="Discard changes?"
+              confirmLabel="Discard"
+              cancelLabel="Keep editing"
+              danger
+              onConfirm={() => blocker.proceed()}
+              onCancel={() => blocker.reset()}
+            />
+          </div>
+        ) : undefined
+      }
       top={
         <TopBar
           left={<IconButton label="Close" icon={<X size={20} />} onClick={leave} />}
@@ -179,17 +218,6 @@ export function SetEditorPage() {
         />
       }
     >
-      {blocker.state === 'blocked' && (
-        <InlineConfirm
-          message="Discard changes?"
-          confirmLabel="Discard"
-          cancelLabel="Keep editing"
-          danger
-          onConfirm={() => blocker.proceed()}
-          onCancel={() => blocker.reset()}
-        />
-      )}
-
       <Field
         id="set-title"
         label="Title"
@@ -275,6 +303,7 @@ export function SetEditorPage() {
               id={`term-${r.key}`}
               label="Term"
               value={r.term}
+              lang="en"
               autoCapitalize="off"
               error={errors.rows?.[r.key]?.term}
               onChange={(e) => updateRow(r.key, { term: e.target.value })}
@@ -283,6 +312,7 @@ export function SetEditorPage() {
               id={`definition-${r.key}`}
               label="Translation"
               value={r.definition}
+              lang={definitionLang}
               error={errors.rows?.[r.key]?.definition}
               onChange={(e) => updateRow(r.key, { definition: e.target.value })}
             />
@@ -296,8 +326,10 @@ export function SetEditorPage() {
         block
         icon={<Plus size={20} />}
         onClick={() => {
-          setRows((current) => [...current, emptyRow()]);
+          const row = emptyRow();
+          setRows((current) => [...current, row]);
           touch();
+          setFocusRequest({ id: `term-${row.key}` });
         }}
       >
         Add card
