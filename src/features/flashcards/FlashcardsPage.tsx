@@ -74,6 +74,7 @@ export function FlashcardsPage() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (optionsOpen || finished) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return; // Alt+arrows are the browser's Back/Forward, not a sort
       const target = e.target instanceof HTMLElement ? e.target : null;
       if (target?.closest('input, textarea, select')) return;
       if (e.key === 'ArrowRight') sort('know');
@@ -156,7 +157,7 @@ export function FlashcardsPage() {
     const isTerm = side === 'front' ? termOnFront : !termOnFront;
     const hidden = side === 'front' ? state.flipped : !state.flipped;
     return (
-      <div className={`${styles.face} ${side === 'back' ? styles.back : ''}`} aria-hidden={hidden}>
+      <div className={`${styles.face} ${side === 'back' ? styles.back : ''}`} aria-hidden={hidden} inert={hidden}>
         <div className={styles.faceTop}>
           {isTerm ? <SpeakButton text={current.term} /> : <span className={styles.lang}>{definitionLabel}</span>}
           {side === 'front' ? (
@@ -181,8 +182,7 @@ export function FlashcardsPage() {
             {current.term}
           </p>
         ) : (
-          // Keyed by card so a scrolled answer block does not hand its scroll position to the next card.
-          <CardBack key={current.id} card={current} lang={set.definitionLang} variant="face" />
+          <CardBack card={current} lang={set.definitionLang} variant="face" />
         )}
         <span className={styles.tap}>{side === 'front' ? 'Tap to flip' : 'Tap to flip back'}</span>
       </div>
@@ -225,10 +225,13 @@ export function FlashcardsPage() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') dispatch({ type: 'flip' });
+            // Only the card itself: Enter on the Star or Speak button inside must not also flip it.
+            if (e.key === 'Enter' && e.target === e.currentTarget) dispatch({ type: 'flip' });
           }}
         >
-          <div className={styles.inner}>
+          {/* Keyed by card: the next card mounts un-flipped, so its answer never shows while this one turns back, and
+              a scrolled answer block does not hand its scroll position over. A tap-flip keeps the element and animates. */}
+          <div key={current?.id} className={styles.inner}>
             {face('front')}
             {face('back')}
           </div>

@@ -1,4 +1,4 @@
-.thin { height: 4px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
+.thin { flex: none; height: 4px; border-radius: var(--r-pill); background: var(--surface-2); overflow: hidden; }
 .thin span { display: block; height: 100%; background: var(--accent); transition: width .25s var(--ease-out); }
 .counts { display: flex; justify-content: space-between; }
 .count {
@@ -16,13 +16,14 @@
 }
 .learning { background: var(--learning-soft); color: var(--learning); }
 .know { background: var(--good-soft); color: var(--good); }
-.stage { flex: 1; min-height: 340px; display: flex; perspective: 1400px; }
+.stage { flex: 1; min-height: 340px; display: flex; }
 .card {
   position: relative;
   flex: 1;
   border-radius: 20px;
   cursor: pointer;
   touch-action: pan-y;
+  perspective: 1400px;
   user-select: none;
   transition: transform .2s var(--ease-out);
 }

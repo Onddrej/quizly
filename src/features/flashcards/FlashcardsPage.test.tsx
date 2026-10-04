@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
 import { createSet } from '../../db/sets';
@@ -213,5 +213,69 @@ describe('FlashcardsPage gestures on tall card content', () => {
     expect(screen.getByLabelText('Know: 0')).toBeInTheDocument();
     expect(screen.getByLabelText('Still learning: 0')).toBeInTheDocument();
     expect(notFlipped()).toBeInTheDocument();
+  });
+});
+
+describe('FlashcardsPage keyboard, focus and the flip', () => {
+  const deck = [
+    { term: 'gate', definition: 'brána' },
+    { term: 'delay', definition: 'meškanie' },
+  ];
+  const cardButton = (name: 'Flip card' | 'Show front of card' = 'Flip card') => screen.getByRole('button', { name });
+  /** The element that turns (the two faces live in it). */
+  const turning = () => screen.getByRole('button', { name: /^(Flip card|Show front of card)$/ }).firstElementChild as HTMLElement;
+
+  it('Space and Enter on the card flip it', async () => {
+    const { user } = await openDeck(deck);
+    cardButton().focus();
+    await user.keyboard(' ');
+    expect(cardButton('Show front of card')).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    expect(cardButton()).toBeInTheDocument();
+  });
+
+  it('Enter on the Star button toggles the star and does not flip the card', async () => {
+    const { user } = await openDeck(deck);
+    screen.getByRole('button', { name: 'Star gate' }).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Star gate' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(cardButton()).toBeInTheDocument();
+  });
+
+  it.each(['Alt', 'Control', 'Meta'])('arrow keys with %s held are browser shortcuts and do not sort', async (modifier) => {
+    const { user } = await openDeck(deck);
+    await user.keyboard(`{${modifier}>}{ArrowLeft}{ArrowRight}{/${modifier}}`);
+    expect(screen.getByLabelText('Still learning: 0')).toBeInTheDocument();
+    expect(screen.getByLabelText('Know: 0')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '1 / 2' })).toBeInTheDocument();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByLabelText('Know: 1')).toBeInTheDocument();
+  });
+
+  it('makes the face turned away inert so its buttons cannot be focused, and swaps on flip', async () => {
+    const { user } = await openDeck(deck);
+    const front = faceOf('gate');
+    const back = faceOf('brána');
+    expect(front).not.toHaveAttribute('inert');
+    expect(back).toHaveAttribute('inert');
+    await user.click(cardButton());
+    expect(front).toHaveAttribute('inert');
+    expect(back).not.toHaveAttribute('inert');
+  });
+
+  it('keeps the same turning element for a flip so it animates, and mounts a fresh one per card so the next answer never flashes', async () => {
+    const { user } = await openDeck(deck);
+    const first = turning();
+    await user.click(cardButton());
+    expect(turning()).toBe(first);
+    await user.click(screen.getByRole('button', { name: 'Know it' }));
+    const second = turning();
+    expect(second).not.toBe(first);
+    expect(cardButton()).toBeInTheDocument();
+    await user.click(cardButton());
+    expect(turning()).toBe(second);
+    await user.click(screen.getByRole('button', { name: 'Undo last card' }));
+    expect(turning()).not.toBe(second);
+    expect(cardButton()).toBeInTheDocument();
   });
 });
