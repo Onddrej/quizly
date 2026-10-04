@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
 import { SpeakButton } from '../../ui/SpeakButton';
 import styles from './Learn.module.css';
@@ -13,6 +13,16 @@ interface MultipleChoiceProps {
 
 export function MultipleChoice({ term, choices, correct, locked, onPick }: MultipleChoiceProps) {
   const [picked, setPicked] = useState<string | null>(null);
+  const optionRefs = useRef(new Map<string, HTMLButtonElement>());
+
+  // The feedback panel appears below and takes room from the options: on short phones keep the picked option and the
+  // correct one (with their marks) in view. Not every environment has scrollIntoView (jsdom does not).
+  useEffect(() => {
+    if (picked === null) return;
+    optionRefs.current.get(picked)?.scrollIntoView?.({ block: 'nearest' });
+    optionRefs.current.get(correct)?.scrollIntoView?.({ block: 'nearest' });
+  }, [picked, correct]);
+
   return (
     <>
       <div className={`card ${styles.prompt}`}>
@@ -33,6 +43,10 @@ export function MultipleChoice({ term, choices, correct, locked, onPick }: Multi
           return (
             <button
               key={choice}
+              ref={(el) => {
+                if (el) optionRefs.current.set(choice, el);
+                else optionRefs.current.delete(choice);
+              }}
               type="button"
               className={`${styles.option} ${state}`}
               disabled={locked || picked !== null}

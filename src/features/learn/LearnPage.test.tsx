@@ -29,6 +29,9 @@ function shownDefinitionTerm(): keyof typeof pairs {
   return el.textContent === 'batožina' ? 'luggage' : 'departure';
 }
 
+/** The round summary ignores taps for a moment after it appears (double-tap guard), so wait before using its buttons. */
+const afterTapGuard = () => new Promise((resolve) => setTimeout(resolve, 400));
+
 const cardOf = async (term: string) => (await db.cards.filter((c) => c.term === term).first())!;
 
 beforeEach(resetDb);
@@ -95,6 +98,7 @@ describe('LearnPage', () => {
     }
     expect(await screen.findByRole('heading', { name: 'Round 1 done' })).toBeInTheDocument();
     expect(screen.getByText('2 of 2 correct. 2 terms are now mastered.')).toBeInTheDocument();
+    await afterTapGuard();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: "You've mastered all 2 terms" })).toBeInTheDocument();
   });
@@ -144,6 +148,7 @@ describe('LearnPage behavior', () => {
     }
     expect(await screen.findByRole('heading', { name: 'Round 1 done' })).toBeInTheDocument();
     await waitFor(async () => expect((await db.sets.get(id))?.learnRound).toBe(2));
+    await afterTapGuard();
     await user.click(screen.getByRole('button', { name: 'Continue to round 2' }));
     expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
     expect(await screen.findByLabelText('Type the translation in Slovak')).toBeInTheDocument();
@@ -179,19 +184,159 @@ describe('LearnPage behavior', () => {
     expect(router.state.location.pathname).toBe(`/sets/${id}`);
   });
 
-  it('keeps going and shows a toast when saving the answer fails', async () => {
+  it('stays on the feedback and shows a toast when saving the answer fails, and Continue retries', async () => {
     const id = await setWithStage(3);
     const { user } = renderRoute(`/sets/${id}/learn`);
     await screen.findByLabelText('Type the translation in Slovak');
+    const term = shownTerm();
     const spy = vi.spyOn(db.cards, 'update').mockRejectedValue(new Error('boom'));
     try {
       await user.type(screen.getByLabelText('Type the translation in Slovak'), 'nonsense');
       await user.click(screen.getByRole('button', { name: 'Answer' }));
+      expect(screen.getByText('Incorrect')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Continue' }));
       expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
-      await waitFor(() => expect(screen.getByLabelText('Type the translation in Slovak')).toBeEnabled());
+      expect(screen.getByText('Incorrect')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+      expect((await cardOf(term)).stage).toBe(3);
     } finally {
       spy.mockRestore();
+    }
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => expect((await cardOf(term)).stage).toBe(2));
+    await waitFor(() => expect(screen.queryByText('Incorrect')).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Type the translation in Slovak')).toBeEnabled();
+  });
+
+  it('still shows the round summary, with a toast, when saving the finished round fails', async () => {
+    const id = await setWithStage(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const spy = vi.spyOn(db.sets, 'where').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    try {
+      for (let i = 0; i < 2; i++) {
+        await waitFor(() => expect(screen.getByLabelText('Type the translation in Slovak')).toBeEnabled());
+        await user.type(screen.getByLabelText('Type the translation in Slovak'), shownTerm() === 'luggage' ? 'batožina' : 'odchod');
+        await user.click(screen.getByRole('button', { name: 'Answer' }));
+        await user.click(screen.getByRole('button', { name: 'Continue' }));
+      }
+      expect(await screen.findByRole('heading', { name: 'Round 1 done' })).toBeInTheDocument();
+      expect(screen.getByText("Couldn't save. Try again.")).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('LearnPage edge cases', () => {
+  const anyTerm = () => screen.getByText(/^(luggage|departure|gate)$/).textContent!;
+  const three = { luggage: 'batožina', departure: 'odchod, odlet', gate: 'brána' };
+
+  it('does not blank the page when the card being asked is deleted in another tab: with one card left it leaves for the set page', async () => {
+    const id = await setWithStage(0);
+    const { router } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    await db.cards.delete((await cardOf(shownTerm())).id);
+    expect(await screen.findByRole('heading', { name: 'Travel' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/sets/${id}`);
+  });
+
+  it('carries on with the remaining cards when the card being asked is deleted in another tab', async () => {
+    const id = await setWithStage(0, three);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const deleted = anyTerm();
+    await db.cards.delete((await cardOf(deleted)).id);
+    await waitFor(() => expect(anyTerm()).not.toBe(deleted));
+    const options = screen.getByRole('group').querySelectorAll('button');
+    expect(options).toHaveLength(2);
+    expect([...options].map((o) => o.textContent)).not.toContain(three[deleted as keyof typeof three]);
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+  });
+
+  it('keeps the correct answer among the options when the translation of the asked card is edited', async () => {
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const term = shownTerm();
+    await db.cards.update((await cardOf(term)).id, { definition: 'novy preklad' });
+    await user.click(await screen.findByRole('button', { name: 'novy preklad' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+  });
+
+  it('does not reshuffle the options when another card changes', async () => {
+    const id = await setWithStage(0, { luggage: 'batožina', departure: 'odchod, odlet', gate: 'brána', delay: 'meškanie', customs: 'colnica' });
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const names = () => [...screen.getByRole('group').querySelectorAll('button')].map((b) => b.textContent);
+    const before = names();
+    expect(before).toHaveLength(4);
+    const random = vi.spyOn(Math, 'random');
+    try {
+      const shown = screen.getByText(/^(luggage|departure|gate|delay|customs)$/).textContent;
+      const other = await db.cards.filter((c) => c.term !== shown).first();
+      await db.cards.update(other!.id, { starred: true });
+      await waitFor(async () => expect((await db.cards.get(other!.id))?.starred).toBe(true));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(random).not.toHaveBeenCalled();
+      expect(names()).toEqual(before);
+    } finally {
+      random.mockRestore();
+    }
+  });
+
+  it('asks a typed question instead of a one-option multiple choice', async () => {
+    const id = await setWithStage(0, { gate: 'brana', door: 'brana', port: 'brana' });
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    expect(await screen.findByLabelText('Type the English term')).toBeInTheDocument();
+    expect(screen.getByText('Translation')).toBeInTheDocument();
+    expect(screen.queryByText('Choose the matching translation')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    expect(screen.getByText("Here's the answer")).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => expect((await db.cards.where('setId').equals(id).toArray()).some((c) => c.stage === 1)).toBe(true));
+    expect(await screen.findByLabelText('Type the English term')).toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+
+  it('a correct typed answer to such a question moves the card on as in multiple choice', async () => {
+    const id = await createSet({
+      title: 'Same',
+      definitionLang: 'sk',
+      cards: [
+        { term: 'door', definition: 'brana' },
+        { term: 'door', definition: 'brana' },
+      ],
+    });
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'door');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.getByText("Next time you'll type the English term.")).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => expect((await db.cards.where('setId').equals(id).toArray()).some((c) => c.stage === 2)).toBe(true));
+  });
+
+  it('scrolls the picked and the correct option into view after answering', async () => {
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, writable: true, value: scroll });
+    try {
+      const id = await setWithStage(0);
+      const { user } = renderRoute(`/sets/${id}/learn`);
+      await screen.findByText('Choose the matching translation');
+      const first = shownTerm();
+      const correct = screen.getByRole('button', { name: pairs[first] });
+      const wrong = screen.getByRole('button', { name: pairs[first === 'luggage' ? 'departure' : 'luggage'] });
+      expect(scroll).not.toHaveBeenCalled();
+      await user.click(wrong);
+      await waitFor(() => expect(scroll.mock.contexts).toContain(correct));
+      expect(scroll.mock.contexts).toContain(wrong);
+      expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
+    } finally {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
     }
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
 import type { Card } from '../../db/types';
 import type { StatusCounts } from '../../lib/progress';
@@ -20,6 +21,9 @@ interface RoundSummaryProps {
   onBack: () => void;
 }
 
+/** A double tap on the last Continue of a round must not also hit "Back to set", which appears under the same finger. */
+const TAP_GUARD_MS = 350;
+
 const TAGS = {
   M: { label: 'Mastered', icon: styles.stateM, tag: styles.tagM },
   C: { label: 'Correct', icon: styles.stateC, tag: styles.tagC },
@@ -28,16 +32,27 @@ const TAGS = {
 
 export function RoundSummary({ roundNumber, summary, cards, counts, allMastered, onContinue, onBack }: RoundSummaryProps) {
   const n = summary.newlyMastered.length;
+  const ready = useRef(false);
+  useEffect(() => {
+    ready.current = false;
+    const timer = setTimeout(() => {
+      ready.current = true;
+    }, TAP_GUARD_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const whenReady = (action: () => void) => () => {
+    if (ready.current) action();
+  };
   const masteredText = n === 0 ? '' : n === 1 ? ' 1 term is now mastered.' : ` ${n} terms are now mastered.`;
   return (
     <Page
       top={<TopBar left={<IconButton label="Close" icon={<X size={20} />} onClick={onBack} />} title={`Round ${roundNumber}`} />}
       bottom={
         <div className={styles.bottomActions}>
-          <Button block onClick={onContinue}>
+          <Button block onClick={whenReady(onContinue)}>
             {allMastered ? 'Continue' : `Continue to round ${roundNumber + 1}`}
           </Button>
-          <Button variant="ghost" block onClick={onBack}>
+          <Button variant="ghost" block onClick={whenReady(onBack)}>
             Back to set
           </Button>
         </div>

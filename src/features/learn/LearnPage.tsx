@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { useSetData } from '../../db/useSetData';
 import { completeRound, markStudied, resetProgress } from '../../db/sets';
 import { setCardStage } from '../../db/cards';
-import type { Card } from '../../db/types';
+import type { Card, Stage } from '../../db/types';
 import { useLeave } from '../../app/navigation';
 import { NotFound } from '../../app/NotFound';
 import { countStatuses } from '../../lib/progress';
@@ -60,11 +60,12 @@ interface FeedbackCopy {
   canOverrule: boolean;
 }
 
-function describeFeedback(p: Pending, card: Card, langName: string, retry: boolean): FeedbackCopy {
+function describeFeedback(p: Pending, card: Card, langName: string, retry: boolean, stage: Stage): FeedbackCopy {
   const again = retry ? "You'll see it again this round." : "You'll see it again in a later round.";
   const next: Record<QuestionType, string> = {
     choice: "Next time you'll type the English term.",
-    'write-term': `Next time you'll type the ${langName} translation.`,
+    // A card still at the multiple choice stage can be asked as a typed question (see `type` below): it then goes to stage 2.
+    'write-term': stage <= 1 ? "Next time you'll type the English term." : `Next time you'll type the ${langName} translation.`,
     'write-definition': 'This term is now mastered.',
   };
   if (p.overridden) return { title: 'Counted as correct', body: next[p.type], canOverrule: false };
@@ -138,10 +139,22 @@ export function LearnPage() {
 
   const currentId = round ? currentCardId(round) : null;
   const current = currentId ? byId.get(currentId) : undefined;
-  const type = round && currentId ? questionTypeFor(round.stages[currentId]) : null;
+  const stageType = round && currentId ? questionTypeFor(round.stages[currentId]) : null;
   const questionKey = round && currentId ? `${currentId}:${round.attempts[currentId] ?? 0}` : 'none';
-  // New options per question only; the card list refreshes after every save and must not reshuffle them.
-  const choices = useMemo(() => (current && type === 'choice' ? pickChoices(current, cards, defaultRng) : []), [questionKey]);
+  // New options per question, and when a translation changes (edited or deleted elsewhere); the card list also refreshes
+  // after every save (stages, stars) and must not reshuffle them.
+  const translationsKey = JSON.stringify(cards.map((c) => [c.id, c.definition]));
+  const choices = useMemo(() => (current && stageType === 'choice' ? pickChoices(current, cards, defaultRng) : []), [questionKey, translationsKey]);
+  // Fewer than two options (every card shares one translation) would be a free pass: type the English term instead.
+  const type = stageType === 'choice' && choices.length < 2 ? 'write-term' : stageType;
+
+  // The asked card was deleted in another tab: build a new round from what is left, or leave when too little is left.
+  const askedCardGone = round !== null && currentId !== null && current === undefined;
+  useEffect(() => {
+    if (!askedCardGone) return;
+    if (cards.length < 2) leave();
+    else beginRound(merged);
+  }, [askedCardGone]);
 
   if (loading) return null;
   if (!set) return <NotFound title="This set doesn't exist" />;
@@ -178,11 +191,13 @@ export function LearnPage() {
       try {
         await setCardStage(currentId, result.stage, Date.now());
       } catch {
+        // Stay on this feedback: nothing is saved and the round has not moved, so Continue can simply be tried again.
         toast("Couldn't save. Try again.");
+        return;
       }
       setRound(result.state);
       if (isRoundFinished(result.state)) {
-        await completeRound(setId).catch(() => undefined);
+        await completeRound(setId).catch(() => toast("Couldn't save. Try again."));
         setPhase({ kind: 'summary', summary: summarizeRound(result.state) });
       } else {
         setPhase({ kind: 'asking' });
@@ -226,7 +241,7 @@ export function LearnPage() {
 
   const pending = phase.kind === 'feedback' ? phase.pending : null;
   const retry = pending ? !pending.correct && (round.attempts[current.id] ?? 0) + 1 <= MAX_RETRIES_PER_CARD : false;
-  const copy = pending ? describeFeedback(pending, current, langName, retry) : null;
+  const copy = pending ? describeFeedback(pending, current, langName, retry, round.stages[current.id]) : null;
 
   return (
     <Page
