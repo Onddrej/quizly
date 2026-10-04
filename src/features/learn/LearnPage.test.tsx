@@ -160,7 +160,9 @@ describe('LearnPage behavior', () => {
     await db.sets.update(id, { learnRound: 5 });
     await db.cards.where('setId').equals(id).modify({ lastAnsweredAt: 123 });
     const { user } = renderRoute(`/sets/${id}/learn`);
-    await user.click(await screen.findByRole('button', { name: 'Study again' }));
+    const studyAgain = await screen.findByRole('button', { name: 'Study again' });
+    await afterTapGuard();
+    await user.click(studyAgain);
     expect(await screen.findByRole('heading', { name: 'Round 1' })).toBeInTheDocument();
     expect(await screen.findByText('Choose the matching translation')).toBeInTheDocument();
     const cards = await db.cards.where('setId').equals(id).toArray();
