@@ -10,6 +10,7 @@ export interface FlashcardState {
 
 export type FlashcardAction =
   | { type: 'start'; order: string[] }
+  | { type: 'reorder'; order: string[] }
   | { type: 'flip' }
   | { type: 'sort'; result: SortResult }
   | { type: 'undo' };
@@ -22,6 +23,9 @@ export function flashcardReducer(state: FlashcardState, action: FlashcardAction)
   switch (action.type) {
     case 'start':
       return initialFlashcardState(action.order);
+    case 'reorder':
+      // Replaces only the cards not seen yet (index and after); the seen prefix, results, history and flip stay.
+      return state.index < state.order.length ? { ...state, order: [...state.order.slice(0, state.index), ...action.order] } : state;
     case 'flip':
       return state.index < state.order.length ? { ...state, flipped: !state.flipped } : state;
     case 'sort': {

@@ -18,6 +18,7 @@ import { IconButton } from '../../ui/IconButton';
 import { SpeakButton } from '../../ui/SpeakButton';
 import { Button } from '../../ui/Button';
 import { CardBack } from '../../ui/CardBack';
+import { EmptyState } from '../../ui/EmptyState';
 import { Sheet } from '../../ui/Sheet';
 import { Switch } from '../../ui/Switch';
 import { flashcardReducer, initialFlashcardState, isFinished, tally, type SortResult } from './flashcardSession';
@@ -57,6 +58,13 @@ export function FlashcardsPage() {
     if (loadedSetId) restart(deckIds, shuffled);
   }, [loadedSetId, prefs.starredOnly]);
 
+  // The deck has cards but the pass has not been set up yet (the first frame after loading, or cards appearing in an
+  // empty set): nothing is drawn meanwhile, so there is no "0 / 0" frame.
+  const awaitingDeck = deckIds.length > 0 && state.order.length === 0;
+  useEffect(() => {
+    if (loadedSetId && awaitingDeck) restart(deckIds, shuffled);
+  }, [loadedSetId, awaitingDeck]);
+
   useEffect(() => {
     if (loadedSetId) void markStudied(loadedSetId);
   }, [loadedSetId]);
@@ -94,6 +102,29 @@ export function FlashcardsPage() {
   const savePrefs = (patch: Partial<FlashcardPrefs>) => void saveSetting('flashcards', { ...prefs, ...patch });
   const closeButton = <IconButton label="Close" icon={<X size={20} />} onClick={leave} />;
 
+  if (deckIds.length === 0) {
+    return (
+      <Page top={<TopBar left={closeButton} title="Flashcards" />}>
+        <EmptyState
+          title="No cards to study"
+          text="Add cards to this set or turn off Starred only."
+          action={<Button onClick={leave}>Back to set</Button>}
+        />
+      </Page>
+    );
+  }
+  if (awaitingDeck) return null;
+
+  // Shuffle toggled mid-pass: the cards already sorted stay sorted and so does the card on screen; only the ones still
+  // to come are shuffled, or put back in the set order.
+  const reorderRest = (doShuffle: boolean) => {
+    const [onScreen, ...rest] = state.order.slice(state.index);
+    if (onScreen === undefined) return;
+    const position = new Map(cards.map((c, i) => [c.id, i]));
+    const ordered = doShuffle ? shuffle(rest) : [...rest].sort((a, b) => (position.get(a) ?? 0) - (position.get(b) ?? 0));
+    dispatch({ type: 'reorder', order: [onScreen, ...ordered] });
+  };
+
   if (finished) {
     return (
       <Page top={<TopBar left={closeButton} title="Flashcards" />}>
@@ -109,6 +140,9 @@ export function FlashcardsPage() {
           )}
           <Button variant="outline" block onClick={() => restart(deckIds, shuffled)}>
             Restart all
+          </Button>
+          <Button variant="ghost" block onClick={() => dispatch({ type: 'undo' })}>
+            Undo last card
           </Button>
           <Button variant="ghost" block onClick={leave}>
             Back to set
@@ -259,7 +293,7 @@ export function FlashcardsPage() {
           onClick={() => {
             const next = !shuffled;
             setShuffled(next);
-            restart(deckIds, next);
+            reorderRest(next);
           }}
         />
       </div>

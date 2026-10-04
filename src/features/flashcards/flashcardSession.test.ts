@@ -102,3 +102,43 @@ describe('flashcardReducer flip, undo, tally and start details', () => {
     expect(flashcardReducer(flipped, { type: 'start', order: ['x'] }).flipped).toBe(false);
   });
 });
+
+describe('flashcardReducer reorder', () => {
+  const sortAll = (ids: string[], results: ('know' | 'learning')[]) =>
+    results.reduce((s, result) => flashcardReducer(s, { type: 'sort', result }), initialFlashcardState(ids));
+
+  it('replaces only the cards not seen yet and keeps index, results and history', () => {
+    const state = sortAll(['a', 'b', 'c', 'd'], ['know', 'learning']);
+    const next = flashcardReducer(state, { type: 'reorder', order: ['d', 'c'] });
+    expect(next).toEqual({
+      order: ['a', 'b', 'd', 'c'],
+      index: 2,
+      results: { a: 'know', b: 'learning' },
+      history: ['a', 'b'],
+      flipped: false,
+    });
+    expect(tally(next)).toEqual({ know: 1, learning: 1, learningIds: ['b'] });
+  });
+
+  it('keeps the flipped state as it is', () => {
+    const flipped = flashcardReducer(initialFlashcardState(['a', 'b', 'c']), { type: 'flip' });
+    expect(flashcardReducer(flipped, { type: 'reorder', order: ['a', 'c', 'b'] }).flipped).toBe(true);
+  });
+
+  it('before any card is sorted it replaces the whole order', () => {
+    expect(flashcardReducer(initialFlashcardState(['a', 'b', 'c']), { type: 'reorder', order: ['c', 'a', 'b'] }).order).toEqual(['c', 'a', 'b']);
+  });
+
+  it('does nothing once the deck is finished or when it is empty', () => {
+    const finished = sortAll(['a', 'b'], ['know', 'know']);
+    expect(flashcardReducer(finished, { type: 'reorder', order: ['x'] })).toBe(finished);
+    const empty = initialFlashcardState([]);
+    expect(flashcardReducer(empty, { type: 'reorder', order: ['x'] })).toBe(empty);
+  });
+
+  it('keeps undo working: it still reopens the card sorted last', () => {
+    const state = flashcardReducer(sortAll(['a', 'b', 'c'], ['know']), { type: 'reorder', order: ['c', 'b'] });
+    const undone = flashcardReducer(state, { type: 'undo' });
+    expect(undone).toMatchObject({ order: ['a', 'c', 'b'], index: 0, history: [], results: {} });
+  });
+});

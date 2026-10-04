@@ -1,10 +1,30 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import type { ComponentProps } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
 import { createSet } from '../../db/sets';
 import { saveSetting } from '../../db/settings';
 import { DEFAULT_SETTINGS } from '../../db/types';
+
+// A fixed "shuffle" (reverse order) so the tests can see what Shuffle does to the cards still to come.
+vi.mock('../../lib/random', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/random')>()),
+  shuffle: <T,>(items: readonly T[]) => items.slice().reverse(),
+}));
+
+// Records the title of every top bar render, to see frames the user could catch (such as "0 / 0").
+const titles = vi.hoisted(() => [] as string[]);
+vi.mock('../../ui/TopBar', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../ui/TopBar')>();
+  return {
+    ...real,
+    TopBar: (props: ComponentProps<typeof real.TopBar>) => {
+      if (typeof props.title === 'string') titles.push(props.title);
+      return real.TopBar(props);
+    },
+  };
+});
 
 const cards = [
   { term: 'gate', definition: 'brána' },
@@ -277,5 +297,114 @@ describe('FlashcardsPage keyboard, focus and the flip', () => {
     await user.click(screen.getByRole('button', { name: 'Undo last card' }));
     expect(turning()).not.toBe(second);
     expect(cardButton()).toBeInTheDocument();
+  });
+});
+
+describe('FlashcardsPage shuffle, finish and empty deck', () => {
+  beforeEach(() => {
+    titles.length = 0;
+  });
+  const five = [
+    { term: 'alpha', definition: 'a1' },
+    { term: 'bravo', definition: 'b2' },
+    { term: 'charlie', definition: 'c3' },
+    { term: 'delta', definition: 'd4' },
+    { term: 'echo', definition: 'e5' },
+  ];
+  const click = (user: Awaited<ReturnType<typeof openDeck>>['user'], name: string) => user.click(screen.getByRole('button', { name }));
+
+  it('toggling Shuffle mid-pass keeps the sorted cards, the counters and the card on screen', async () => {
+    const { user } = await openDeck(five);
+    await click(user, 'Know it');
+    await click(user, 'Still learning');
+    expect(screen.getByRole('heading', { name: '3 / 5' })).toBeInTheDocument();
+    await click(user, 'Shuffle');
+    expect(screen.getByRole('button', { name: 'Shuffle' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: '3 / 5' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Know: 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Still learning: 1')).toBeInTheDocument();
+    expect(faceOf('charlie')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Know it'); // the rest comes shuffled (reversed here): echo before delta
+    expect(screen.getByRole('heading', { name: '4 / 5' })).toBeInTheDocument();
+    expect(faceOf('echo')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Shuffle'); // off: the rest goes back to the set order, the card on screen stays
+    expect(screen.getByRole('button', { name: 'Shuffle' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('heading', { name: '4 / 5' })).toBeInTheDocument();
+    expect(faceOf('echo')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Know it');
+    expect(faceOf('delta')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Know it');
+    expect(screen.getByText('You know 4 · Still learning 1')).toBeInTheDocument();
+  });
+
+  it('keeps a flipped card flipped when Shuffle is toggled', async () => {
+    const { user } = await openDeck(five);
+    await user.click(screen.getByRole('button', { name: 'Flip card' }));
+    await click(user, 'Shuffle');
+    expect(screen.getByRole('button', { name: 'Show front of card' })).toBeInTheDocument();
+    expect(faceOf('alpha')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('Shuffle reorders only the cards still to come in a Study again pass', async () => {
+    const { user } = await openDeck(five);
+    await click(user, 'Still learning'); // alpha
+    await click(user, 'Know it');
+    await click(user, 'Still learning'); // charlie
+    await click(user, 'Still learning'); // delta
+    await click(user, 'Know it');
+    await click(user, 'Study 3 again');
+    expect(screen.getByRole('heading', { name: '1 / 3' })).toBeInTheDocument();
+    await click(user, 'Know it');
+    await click(user, 'Shuffle'); // only charlie (on screen) and delta are left of this pass of 3; the pass is not widened to the deck
+    expect(screen.getByRole('heading', { name: '2 / 3' })).toBeInTheDocument();
+    expect(faceOf('charlie')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Know it');
+    expect(screen.getByRole('heading', { name: '3 / 3' })).toBeInTheDocument();
+    expect(faceOf('delta')).toHaveAttribute('aria-hidden', 'false');
+  });
+
+  it('Restart all and Study again still restart with the current shuffle setting', async () => {
+    const { user } = await openDeck(five.slice(0, 3));
+    await click(user, 'Shuffle'); // on: alpha stays on screen, the rest comes reversed (charlie, bravo)
+    await click(user, 'Still learning');
+    await click(user, 'Know it');
+    await click(user, 'Know it');
+    expect(screen.getByRole('heading', { name: 'Deck finished' })).toBeInTheDocument();
+    await click(user, 'Restart all'); // shuffle is on: a fresh shuffle of the whole deck (reversed): charlie, bravo, alpha
+    expect(screen.getByRole('heading', { name: '1 / 3' })).toBeInTheDocument();
+    expect(faceOf('charlie')).toHaveAttribute('aria-hidden', 'false');
+  });
+
+  it('the deck-finished screen can undo the last card', async () => {
+    const { user } = await openDeck(cards);
+    await click(user, 'Know it');
+    await click(user, 'Still learning');
+    await click(user, 'Know it');
+    expect(screen.getByRole('heading', { name: 'Deck finished' })).toBeInTheDocument();
+    expect(screen.getByText('You know 2 · Still learning 1')).toBeInTheDocument();
+    await click(user, 'Undo last card');
+    expect(screen.getByRole('heading', { name: '3 / 3' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Know: 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Still learning: 1')).toBeInTheDocument();
+    expect(faceOf('customs')).toHaveAttribute('aria-hidden', 'false');
+    await click(user, 'Still learning');
+    expect(screen.getByText('You know 1 · Still learning 2')).toBeInTheDocument();
+  });
+
+  it('shows a message and a way back for a set without cards', async () => {
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: [] });
+    const { user, router } = renderRoute(`/sets/${id}/flashcards`);
+    expect(await screen.findByText('No cards to study')).toBeInTheDocument();
+    expect(screen.getByText('Add cards to this set or turn off Starred only.')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /\d+ \/ \d+/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Back to set' }));
+    expect(router.state.location.pathname).toBe(`/sets/${id}`);
+    expect(router.state.historyAction).toBe('REPLACE');
+  });
+
+  it('never renders a "0 / 0" frame while the deck is being set up', async () => {
+    await openDeck(cards);
+    expect(titles).toContain('1 / 3');
+    expect(titles).not.toContain('0 / 0');
   });
 });
