@@ -4,7 +4,7 @@ import { SpeakButton } from '../../ui/SpeakButton';
 import styles from './Learn.module.css';
 
 interface WrittenQuestionProps {
-  label: 'Definition' | 'Term';
+  label: 'Translation' | 'Term';
   prompt: string;
   promptLang: string;
   speak?: string;

@@ -25,7 +25,7 @@ export function MultipleChoice({ term, choices, correct, locked, onPick }: Multi
         </p>
       </div>
       <p className={styles.ask} id="choice-question">
-        Choose the matching definition
+        Choose the matching translation
       </p>
       <div className={styles.options} role="group" aria-labelledby="choice-question">
         {choices.map((choice) => {

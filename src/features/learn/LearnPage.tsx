@@ -64,7 +64,7 @@ function describeFeedback(p: Pending, card: Card, langName: string, retry: boole
   const again = retry ? "You'll see it again this round." : "You'll see it again in a later round.";
   const next: Record<QuestionType, string> = {
     choice: "Next time you'll type the English term.",
-    'write-term': `Next time you'll type the ${langName} definition.`,
+    'write-term': `Next time you'll type the ${langName} translation.`,
     'write-definition': 'This term is now mastered.',
   };
   if (p.overridden) return { title: 'Counted as correct', body: next[p.type], canOverrule: false };
@@ -125,10 +125,16 @@ export function LearnPage() {
   useEffect(() => {
     if (loading || !set || started.current) return;
     started.current = true;
+    // A round needs at least two cards (the Set page disables Learn for fewer, but the Home link and deep links can still
+    // arrive here): leave without starting one. `started` also keeps StrictMode's second effect run from leaving twice.
+    if (cards.length < 2) {
+      leave();
+      return;
+    }
     setRoundNumber(set.learnRound);
     void markStudied(set.id);
     beginRound(cards);
-  }, [loading, set, cards, beginRound]);
+  }, [loading, set, cards, beginRound, leave]);
 
   const currentId = round ? currentCardId(round) : null;
   const current = currentId ? byId.get(currentId) : undefined;
@@ -254,11 +260,11 @@ export function LearnPage() {
       ) : (
         <WrittenQuestion
           key={questionKey}
-          label={type === 'write-term' ? 'Definition' : 'Term'}
+          label={type === 'write-term' ? 'Translation' : 'Term'}
           prompt={type === 'write-term' ? current.definition : current.term}
           promptLang={type === 'write-term' ? set.definitionLang : 'en'}
           speak={type === 'write-definition' ? current.term : undefined}
-          instruction={type === 'write-term' ? 'Type the English term' : `Type the definition in ${langName}`}
+          instruction={type === 'write-term' ? 'Type the English term' : `Type the translation in ${langName}`}
           locked={pending !== null}
           result={pending ? (pending.correct ? 'ok' : 'no') : null}
           onSubmit={submitWritten}
