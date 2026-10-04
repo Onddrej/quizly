@@ -300,7 +300,9 @@ describe('LearnPage edge cases', () => {
     expect(screen.getByText("Here's the answer")).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(async () => expect((await db.cards.where('setId').equals(id).toArray()).some((c) => c.stage === 1)).toBe(true));
-    expect(await screen.findByLabelText('Type the English term')).toBeInTheDocument();
+    // Continue saves asynchronously: wait until the old feedback is gone, so the input found next belongs to the next question.
+    await waitFor(() => expect(screen.queryByText("Here's the answer")).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Type the English term')).toBeEnabled();
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
 
