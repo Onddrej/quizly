@@ -5,6 +5,7 @@ import { useSetData } from '../../db/useSetData';
 import { deleteSet, resetProgress } from '../../db/sets';
 import { toggleStar } from '../../db/cards';
 import { NotFound } from '../../app/NotFound';
+import { useLeave } from '../../app/navigation';
 import { countStatuses } from '../../lib/progress';
 import { languageName } from '../../lib/languages';
 import { Page } from '../../ui/Page';
@@ -56,6 +57,7 @@ function ModeRow({ to, icon, name, hint, disabled }: ModeRowProps) {
 export function SetPage() {
   const { setId = '' } = useParams();
   const navigate = useNavigate();
+  const leaveToHome = useLeave('/');
   const toast = useToast();
   const { loading, set, cards } = useSetData(setId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -99,7 +101,7 @@ export function SetPage() {
     <Page
       top={
         <TopBar
-          left={<IconButton label="Back" icon={<ArrowLeft size={20} />} onClick={() => navigate('/')} />}
+          left={<IconButton label="Back" icon={<ArrowLeft size={20} />} onClick={leaveToHome} />}
           right={<IconButton label="Set options" icon={<Ellipsis size={20} />} onClick={() => setMenuOpen(true)} />}
         />
       }

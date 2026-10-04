@@ -4,6 +4,7 @@ import { ChevronDown, ClipboardPaste, Plus, Trash2, X } from 'lucide-react';
 import { createSet, updateSet } from '../../db/sets';
 import { useSetData } from '../../db/useSetData';
 import { NotFound } from '../../app/NotFound';
+import { useLeave } from '../../app/navigation';
 import { newId } from '../../lib/id';
 import { DEFINITION_LANGUAGES } from '../../lib/languages';
 import { Page } from '../../ui/Page';
@@ -82,6 +83,8 @@ export function SetEditorPage() {
   const { setId } = useParams();
   const editing = setId !== undefined;
   const navigate = useNavigate();
+  const leaveTo = editing ? `/sets/${setId}` : '/';
+  const leave = useLeave(leaveTo);
   const toast = useToast();
   const { loading, set, cards } = useSetData(setId);
 
@@ -121,7 +124,6 @@ export function SetEditorPage() {
   if (editing && !loading && !set) return <NotFound title="This set doesn't exist" />;
   if (!initialized) return null;
 
-  const leaveTo = editing ? `/sets/${setId}` : '/';
   const touch = () => setDirty(true);
 
   function updateRow(key: string, patch: Partial<EditorRow>) {
@@ -146,11 +148,15 @@ export function SetEditorPage() {
     setSaving(true);
     try {
       const draft = { title, definitionLang, cards: result.cards };
-      let id = setId;
-      if (id) await updateSet(id, draft);
-      else id = await createSet(draft);
-      leavingAfterSave.current = true;
-      navigate(`/sets/${id}`, { replace: true });
+      if (setId) {
+        await updateSet(setId, draft);
+        leavingAfterSave.current = true;
+        leave(); // back to the Set page: a pop when that page is directly behind
+      } else {
+        const id = await createSet(draft);
+        leavingAfterSave.current = true;
+        navigate(`/sets/${id}`, { replace: true }); // the new Set page takes the editor's place
+      }
     } catch {
       toast("Couldn't save. Try again.");
       setSaving(false);
@@ -163,7 +169,7 @@ export function SetEditorPage() {
     <Page
       top={
         <TopBar
-          left={<IconButton label="Close" icon={<X size={20} />} onClick={() => navigate(leaveTo)} />}
+          left={<IconButton label="Close" icon={<X size={20} />} onClick={leave} />}
           title={editing ? 'Edit set' : 'Create set'}
           right={
             <Button variant="ghost" onClick={save} disabled={saving}>

@@ -1,4 +1,4 @@
-import type { RouteObject } from 'react-router';
+import { Outlet, type RouteObject } from 'react-router';
 import { HomePage } from '../features/home/HomePage';
 import { SetEditorPage } from '../features/editor/SetEditorPage';
 import { SetPage } from '../features/set/SetPage';
@@ -7,10 +7,21 @@ import { LearnPage } from '../features/learn/LearnPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { NotFound } from './NotFound';
 import { RouteError } from './RouteError';
+import { NavigationTracker } from './navigation';
+
+function AppLayout() {
+  return (
+    <>
+      <NavigationTracker />
+      <Outlet />
+    </>
+  );
+}
 
 export const routes: RouteObject[] = [
   {
-    // Pathless layout route: any render error below it shows the plain error page.
+    // Pathless layout route: tracks the history for useLeave, and any render error below it shows the plain error page.
+    element: <AppLayout />,
     errorElement: <RouteError />,
     children: [
       { path: '/', element: <HomePage /> },
