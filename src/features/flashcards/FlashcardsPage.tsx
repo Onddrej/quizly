@@ -17,6 +17,7 @@ import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
 import { SpeakButton } from '../../ui/SpeakButton';
 import { Button } from '../../ui/Button';
+import { CardBack } from '../../ui/CardBack';
 import { Sheet } from '../../ui/Sheet';
 import { Switch } from '../../ui/Switch';
 import { flashcardReducer, initialFlashcardState, isFinished, tally, type SortResult } from './flashcardSession';
@@ -36,7 +37,7 @@ export function FlashcardsPage() {
   const [shuffled, setShuffled] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [dragX, setDragX] = useState(0);
-  const dragStart = useRef<number | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
 
   const anyStarred = cards.some((c) => c.starred);
   const deckIds = useMemo(
@@ -119,21 +120,31 @@ export function FlashcardsPage() {
   const total = state.order.length;
   const definitionLabel = languageName(set.definitionLang);
 
+  // A gesture is measured on both axes: a mostly vertical drag is the user scrolling tall card content (the browser
+  // normally takes it over and cancels the pointer), so it must neither move the card nor flip or sort it.
+  function dragDelta(e: ReactPointerEvent<HTMLDivElement>) {
+    const start = dragStart.current;
+    return start ? { dx: (e.clientX ?? 0) - start.x, dy: (e.clientY ?? 0) - start.y } : null;
+  }
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    dragStart.current = e.clientX ?? 0;
+    dragStart.current = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    if (dragStart.current !== null) setDragX((e.clientX ?? 0) - dragStart.current);
+    const delta = dragDelta(e);
+    if (delta) setDragX(Math.abs(delta.dy) > Math.abs(delta.dx) ? 0 : delta.dx);
   }
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    if (dragStart.current === null) return;
-    const dx = (e.clientX ?? 0) - dragStart.current;
+    const delta = dragDelta(e);
+    if (!delta) return;
+    const { dx, dy } = delta;
     dragStart.current = null;
     setDragX(0);
-    if (dx > SWIPE_DISTANCE) sort('know');
-    else if (dx < -SWIPE_DISTANCE) sort('learning');
-    else if (Math.abs(dx) < TAP_TOLERANCE) dispatch({ type: 'flip' });
+    if (Math.abs(dx) < TAP_TOLERANCE && Math.abs(dy) < TAP_TOLERANCE) dispatch({ type: 'flip' });
+    else if (Math.abs(dx) >= Math.abs(dy)) {
+      if (dx > SWIPE_DISTANCE) sort('know');
+      else if (dx < -SWIPE_DISTANCE) sort('learning');
+    }
   }
   function onPointerCancel() {
     dragStart.current = null;
@@ -143,7 +154,6 @@ export function FlashcardsPage() {
   function face(side: 'front' | 'back') {
     if (!current || !set) return null;
     const isTerm = side === 'front' ? termOnFront : !termOnFront;
-    const text = isTerm ? current.term : current.definition;
     const hidden = side === 'front' ? state.flipped : !state.flipped;
     return (
       <div className={`${styles.face} ${side === 'back' ? styles.back : ''}`} aria-hidden={hidden}>
@@ -166,9 +176,14 @@ export function FlashcardsPage() {
             <span />
           )}
         </div>
-        <p className={styles.word} lang={isTerm ? 'en' : set.definitionLang}>
-          {text}
-        </p>
+        {isTerm ? (
+          <p className={styles.word} lang="en">
+            {current.term}
+          </p>
+        ) : (
+          // Keyed by card so a scrolled answer block does not hand its scroll position to the next card.
+          <CardBack key={current.id} card={current} lang={set.definitionLang} variant="face" />
+        )}
         <span className={styles.tap}>{side === 'front' ? 'Tap to flip' : 'Tap to flip back'}</span>
       </div>
     );
