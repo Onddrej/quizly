@@ -234,7 +234,7 @@ export function FlashcardsPage() {
       }
     >
       <div className={styles.thin} aria-hidden="true">
-        <span style={{ width: `${total ? (state.index / total) * 100 : 0}%` }} />
+        <span style={{ transform: `scaleX(${total ? state.index / total : 0})` }} />
       </div>
       <div className={styles.counts}>
         <span className={`${styles.count} ${styles.learning}`} aria-label={`Still learning: ${counts.learning}`}>

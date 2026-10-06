@@ -1,4 +1,5 @@
-/* Quizly design tokens. Source of truth: docs/design/screens-v1.html (approved v1 design). */
+/* Quizly design tokens. Source of truth: docs/design/screens-v1.html (approved v1 design),
+   except --bad (both themes) and light --learning, nudged to reach WCAG AA (4.5:1) as text on their soft tints. */
 :root {
   --bg: #F6F7FB;
   --surface: #FFFFFF;
@@ -14,10 +15,10 @@
   --good: #0F7A56;
   --good-fill: #18AE79;
   --good-soft: #E1F5EC;
-  --bad: #C8382A;
+  --bad: #C43626;
   --bad-fill: #FF725B;
   --bad-soft: #FDEBE7;
-  --learning: #B85600;
+  --learning: #B05200;
   --learning-fill: #FF983A;
   --learning-soft: #FFF0E0;
   --star: #F5B800;
@@ -49,7 +50,7 @@
     --good: #4ED6A0;
     --good-fill: #18AE79;
     --good-soft: rgba(24, 174, 121, .2);
-    --bad: #FF8C7A;
+    --bad: #FF9C8C;
     --bad-fill: #FF725B;
     --bad-soft: rgba(255, 114, 91, .18);
     --learning: #FFB066;
@@ -78,7 +79,7 @@
   --good: #4ED6A0;
   --good-fill: #18AE79;
   --good-soft: rgba(24, 174, 121, .2);
-  --bad: #FF8C7A;
+  --bad: #FF9C8C;
   --bad-fill: #FF725B;
   --bad-soft: rgba(255, 114, 91, .18);
   --learning: #FFB066;
