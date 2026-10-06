@@ -5,4 +5,5 @@
 .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
 .note { font-size: 14px; color: var(--ink-2); }
 .error { font-size: 14px; font-weight: 600; color: var(--bad); }
+.report { font-size: 13px; line-height: 1.5; }
 .about { display: grid; gap: 4px; padding: 0 4px; font-size: 14px; color: var(--ink-2); }

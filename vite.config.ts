@@ -37,6 +37,8 @@ export default defineConfig({
   base: '/quizly/',
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    // which deploy is running (shown in the diagnostics report); GitHub Actions sets GITHUB_SHA
+    __BUILD_ID__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'dev'),
   },
   plugins: [react(), ...(process.env.VITEST ? [] : [pwa])],
   test: {

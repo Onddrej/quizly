@@ -7,6 +7,7 @@ import { createSet } from '../../db/sets';
 import { createBackup, serializeBackup } from '../../db/backup';
 import { db } from '../../db/schema';
 import { initInstallPrompt } from '../../app/install';
+import { diagnostics } from '../../lib/diagnostics';
 
 // jsdom has no object URLs. The fakes stay for the whole file, because downloadText revokes the URL in a timer one second after the click.
 let downloadedBlob: Blob | undefined;
@@ -357,5 +358,58 @@ describe('SettingsPage pronunciation', () => {
     await user.click(screen.getByRole('button', { name: 'Test voice' }));
     expect(synth.speak).toHaveBeenCalledTimes(1);
     expect((synth.speak.mock.calls[0][0] as FakeUtterance).lang).toBe('en-GB');
+  });
+});
+
+describe('SettingsPage diagnostics', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('explains the local log and says when it is empty', async () => {
+    renderRoute('/settings');
+    expect(await screen.findByRole('heading', { name: 'Diagnostics' })).toBeInTheDocument();
+    expect(screen.getByText(/never your cards/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing is sent anywhere/)).toBeInTheDocument();
+    expect(screen.getByText('The log is empty.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear log' })).toBeDisabled();
+  });
+
+  it('counts the entries in the log', async () => {
+    diagnostics.record({ kind: 'error', message: 'Error: one' });
+    diagnostics.record({ kind: 'rejection', message: 'Error: two' });
+    renderRoute('/settings');
+    expect(await screen.findByText('2 entries in the log.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear log' })).toBeEnabled();
+  });
+
+  it('copies a report with the environment and the log to the clipboard', async () => {
+    diagnostics.record({ kind: 'op-slow', op: 'deleteSet', ms: 20143, phases: { body: 90 } });
+    const { user } = renderRoute('/settings');
+    await user.click(await screen.findByRole('button', { name: 'Copy report' }));
+    expect(await screen.findByText('Report copied')).toBeInTheDocument();
+    const report = await navigator.clipboard.readText();
+    expect(report).toContain('Quizly diagnostics');
+    expect(report).toContain('Build: ');
+    expect(report).toContain('Data: 0 sets, 0 cards');
+    expect(report).toContain('op-slow  deleteSet  20143 ms  (body 90 ms)');
+  });
+
+  it('shows the report as selectable text when the clipboard is refused', async () => {
+    diagnostics.record({ kind: 'error', message: 'Error: shown instead' });
+    const { user } = renderRoute('/settings');
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValueOnce(new Error('denied'));
+    await user.click(await screen.findByRole('button', { name: 'Copy report' }));
+    expect(await screen.findByText("Couldn't copy. Select the text below instead.")).toBeInTheDocument();
+    const box = screen.getByRole('textbox', { name: 'Report' });
+    expect(box).toHaveAttribute('readonly');
+    expect((box as HTMLTextAreaElement).value).toContain('Error: shown instead');
+  });
+
+  it('clears the log', async () => {
+    diagnostics.record({ kind: 'error', message: 'Error: gone' });
+    const { user } = renderRoute('/settings');
+    await user.click(await screen.findByRole('button', { name: 'Clear log' }));
+    expect(await screen.findByText('Log cleared')).toBeInTheDocument();
+    expect(screen.getByText('The log is empty.')).toBeInTheDocument();
+    expect(diagnostics.entries()).toEqual([]);
   });
 });

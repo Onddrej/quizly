@@ -1,19 +1,22 @@
 import { useRef, useState } from 'react';
-import { Download, Smartphone, Upload, Volume2 } from 'lucide-react';
+import { ClipboardCopy, Download, Smartphone, Trash2, Upload, Volume2 } from 'lucide-react';
 import { useSettings } from '../../app/SettingsContext';
 import { useInstallPrompt } from '../../app/install';
 import { saveSetting } from '../../db/settings';
 import { BackupError, backupFileName, countExistingSets, createBackup, importBackup, parseBackup, serializeBackup, type Backup } from '../../db/backup';
 import type { Accent, ThemePref } from '../../db/types';
+import { diagnostics, formatReport } from '../../lib/diagnostics';
 import { useSpeech } from '../../lib/useSpeech';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { TabBar } from '../../ui/TabBar';
 import { Button } from '../../ui/Button';
+import { FieldArea } from '../../ui/FieldArea';
 import { Segmented } from '../../ui/Segmented';
 import { InlineConfirm } from '../../ui/InlineConfirm';
 import { useToast } from '../../ui/Toast';
 import { downloadText, readFileText } from './files';
+import { collectEnvironment } from './report';
 import styles from './SettingsPage.module.css';
 
 const ACCENTS = [
@@ -46,6 +49,34 @@ export function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [pending, setPending] = useState<{ backup: Backup; replaced: number } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [logCount, setLogCount] = useState(() => diagnostics.entries().length);
+  const [copying, setCopying] = useState(false);
+  const [shownReport, setShownReport] = useState<string | null>(null);
+
+  async function copyReport() {
+    setCopying(true);
+    setShownReport(null);
+    try {
+      const report = formatReport(diagnostics.entries(), await collectEnvironment(), Date.now());
+      try {
+        await navigator.clipboard.writeText(report);
+        toast('Report copied');
+      } catch {
+        // some browsers refuse clipboard writes: show the text so it can be selected by hand
+        setShownReport(report);
+        toast("Couldn't copy. Select the text below instead.");
+      }
+    } finally {
+      setCopying(false);
+    }
+  }
+
+  function clearLog() {
+    diagnostics.clear();
+    setLogCount(0);
+    setShownReport(null);
+    toast('Log cleared');
+  }
 
   async function exportBackup() {
     setExporting(true);
@@ -158,6 +189,27 @@ export function SettingsPage() {
               onCancel={closePreview}
             />
           )}
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="diagnostics-heading">
+        <h2 id="diagnostics-heading" className={styles.sectionTitle}>
+          Diagnostics
+        </h2>
+        <div className={`card ${styles.box}`}>
+          <p className={styles.note}>
+            If something fails or feels slow, Quizly keeps a short log on this device: error messages and timings, never your cards. Nothing is sent anywhere. Copy the report to share it.
+          </p>
+          <p className={styles.note}>{logCount === 0 ? 'The log is empty.' : `${logCount === 1 ? '1 entry' : `${logCount} entries`} in the log.`}</p>
+          <div className={styles.buttons}>
+            <Button variant="outline" icon={<ClipboardCopy size={20} />} disabled={copying} onClick={() => void copyReport()}>
+              Copy report
+            </Button>
+            <Button variant="outline" icon={<Trash2 size={20} />} disabled={logCount === 0} onClick={clearLog}>
+              Clear log
+            </Button>
+          </div>
+          {shownReport !== null && <FieldArea id="diagnostics-report" label="Report" readOnly rows={8} value={shownReport} className={styles.report} />}
         </div>
       </section>
 
