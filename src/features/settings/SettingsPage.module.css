@@ -1,0 +1,8 @@
+.section { display: grid; gap: 10px; }
+.sectionTitle { font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.box { display: grid; gap: 14px; padding: 16px; }
+.box > button { justify-self: start; }
+.buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.note { font-size: 14px; color: var(--ink-2); }
+.error { font-size: 14px; font-weight: 600; color: var(--bad); }
+.about { display: grid; gap: 4px; padding: 0 4px; font-size: 14px; color: var(--ink-2); }

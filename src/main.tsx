@@ -8,7 +8,10 @@ import '@fontsource/figtree/700.css';
 import '@fontsource/figtree/800.css';
 import './styles/tokens.css';
 import './styles/global.css';
+import { initInstallPrompt } from './app/install';
 import { App } from './app/App';
+
+initInstallPrompt();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
