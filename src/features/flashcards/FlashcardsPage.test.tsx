@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
+import { db } from '../../db/schema';
 import { createSet } from '../../db/sets';
 import { saveSetting } from '../../db/settings';
 import { DEFAULT_SETTINGS } from '../../db/types';
+import { collectUnhandledRejections } from '../../test/unhandled';
 
 // A fixed "shuffle" (reverse order) so the tests can see what Shuffle does to the cards still to come.
 vi.mock('../../lib/random', async (importOriginal) => ({
@@ -87,6 +89,54 @@ async function openDeck(deck: { term: string; definition: string; meaning?: stri
 
 /** The card face (the aria-hidden toggled block) that holds `text`. */
 const faceOf = (text: string) => screen.getByText(text).closest('[aria-hidden]') as HTMLElement;
+
+describe('FlashcardsPage failed writes', () => {
+  const twoCards = [
+    { term: 'gate', definition: 'brána' },
+    { term: 'delay', definition: 'meškanie' },
+  ];
+
+  it('toasts when starring the card fails', async () => {
+    const { user } = await openDeck(twoCards);
+    const spy = vi.spyOn(db, 'transaction').mockRejectedValueOnce(new Error('disk full'));
+    try {
+      await user.click(screen.getByRole('button', { name: 'Star gate' }));
+      expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('toasts when saving a flashcard option fails', async () => {
+    const { user } = await openDeck(twoCards);
+    await user.click(screen.getByRole('button', { name: 'Flashcard options' }));
+    const sw = screen.getByRole('switch', { name: 'Start with definition' });
+    const spy = vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('quota'));
+    try {
+      await user.click(sw);
+      expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('swallows a failed last-studied stamp: no toast, no unhandled rejection', async () => {
+    const unhandled = collectUnhandledRejections();
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: twoCards });
+    const spy = vi.spyOn(db.sets, 'update').mockRejectedValue(new Error('boom'));
+    try {
+      renderRoute(`/sets/${id}/flashcards`);
+      await screen.findByRole('heading', { name: '1 / 2' });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(spy).toHaveBeenCalled();
+      expect(screen.queryByText("Couldn't save. Try again.")).not.toBeInTheDocument();
+      expect(unhandled.reasons).toEqual([]);
+    } finally {
+      spy.mockRestore();
+      unhandled.stop();
+    }
+  });
+});
 
 describe('FlashcardsPage card details', () => {
   it('shows translation, definition and examples on the back face when the card has them', async () => {

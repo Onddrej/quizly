@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
@@ -25,6 +25,20 @@ describe('SetPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Star gate' }));
     await waitFor(async () => expect((await listCards(id))[0].starred).toBe(true));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Star gate' })).toHaveAttribute('aria-pressed', 'true'));
+  });
+
+  it('toasts when starring a term fails, and the star stays off', async () => {
+    const id = await createSet({ title: 'T', definitionLang: 'sk', cards: [{ term: 'gate', definition: 'brána' }] });
+    const { user } = renderRoute(`/sets/${id}`);
+    const star = await screen.findByRole('button', { name: 'Star gate' });
+    const spy = vi.spyOn(db, 'transaction').mockRejectedValueOnce(new Error('disk full'));
+    try {
+      await user.click(star);
+      expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+      expect(star).toHaveAttribute('aria-pressed', 'false');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('deletes the set after confirmation', async () => {

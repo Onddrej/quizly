@@ -45,6 +45,17 @@ describe('SettingsPage', () => {
     });
   });
 
+  it.each([
+    ['theme', 'Dark'],
+    ['accent', 'UK English'],
+  ])('toasts when saving the %s fails', async (_setting, option) => {
+    const { user } = renderRoute('/settings');
+    const radio = await screen.findByRole('radio', { name: option });
+    vi.spyOn(db.settings, 'put').mockRejectedValueOnce(new Error('quota'));
+    await user.click(radio);
+    expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
+  });
+
   it('explains when pronunciation is not available', async () => {
     renderRoute('/settings');
     expect(await screen.findByText("Pronunciation isn't available in this browser.")).toBeInTheDocument();

@@ -47,12 +47,18 @@ export function pickVoice(voices: readonly SpeechSynthesisVoice[], accent: Accen
 
 export function speak(text: string, accent: Accent): void {
   if (!isSpeechSupported() || !text.trim()) return;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = accent;
-  utterance.rate = 0.95;
-  const voice = pickVoice(synth.getVoices(), accent);
-  if (voice) utterance.voice = voice;
-  synth.speak(utterance);
+  // Callers include a React effect (flashcard autoplay): an exception from the speech API must never reach React and
+  // replace the page with the error screen. Failing to speak is silent.
+  try {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = accent;
+    utterance.rate = 0.95;
+    const voice = pickVoice(synth.getVoices(), accent);
+    if (voice) utterance.voice = voice;
+    synth.speak(utterance);
+  } catch {
+    // speech is a convenience; nothing to recover
+  }
 }

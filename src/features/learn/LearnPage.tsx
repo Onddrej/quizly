@@ -133,7 +133,7 @@ export function LearnPage() {
       return;
     }
     setRoundNumber(set.learnRound);
-    void markStudied(set.id);
+    void markStudied(set.id).catch(() => undefined); // a failed "last studied" stamp is not worth a toast
     beginRound(cards);
   }, [loading, set, cards, beginRound, leave]);
 

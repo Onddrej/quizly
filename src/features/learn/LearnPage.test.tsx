@@ -5,6 +5,7 @@ import { resetDb } from '../../test/db';
 import { db } from '../../db/schema';
 import { createSet } from '../../db/sets';
 import type { Stage } from '../../db/types';
+import { collectUnhandledRejections } from '../../test/unhandled';
 
 const pairs = { luggage: 'batožina', departure: 'odchod, odlet' } as const;
 const typos: Record<string, string> = { luggage: 'lugage', departure: 'departre' };
@@ -228,6 +229,25 @@ describe('LearnPage behavior', () => {
       expect(screen.getByText("Couldn't save. Try again.")).toBeInTheDocument();
     } finally {
       spy.mockRestore();
+    }
+  });
+});
+
+describe('LearnPage failed last-studied stamp', () => {
+  it('swallows it: the round still starts, no toast, no unhandled rejection', async () => {
+    const unhandled = collectUnhandledRejections();
+    const id = await setWithStage(0);
+    const spy = vi.spyOn(db.sets, 'update').mockRejectedValue(new Error('boom'));
+    try {
+      renderRoute(`/sets/${id}/learn`);
+      expect(await screen.findByText('Choose the matching translation')).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(spy).toHaveBeenCalled();
+      expect(screen.queryByText("Couldn't save. Try again.")).not.toBeInTheDocument();
+      expect(unhandled.reasons).toEqual([]);
+    } finally {
+      spy.mockRestore();
+      unhandled.stop();
     }
   });
 });

@@ -265,7 +265,10 @@ export function SetEditorPage() {
           rows={4}
           value={paste}
           placeholder={'gate - brána\nlayover - prestup'}
-          onChange={(e) => setPaste(e.target.value)}
+          onChange={(e) => {
+            setPaste(e.target.value);
+            if (e.target.value) touch(); // text that was not added to the cards yet is still an unsaved change
+          }}
         />
         {parsed.errors.length > 0 && (
           <ul className={styles.parseErrors}>

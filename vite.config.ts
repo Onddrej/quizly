@@ -42,5 +42,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // some editor tests take 1.3-1.8 s locally; the deploy workflow runs them on slower CI machines
+    testTimeout: 15000,
   },
 });

@@ -98,7 +98,7 @@ export function SettingsPage() {
           Pronunciation
         </h2>
         <div className={`card ${styles.box}`}>
-          <Segmented name="accent" label="Accent" value={settings.accent} options={ACCENTS} onChange={(v) => void saveSetting('accent', v)} />
+          <Segmented name="accent" label="Accent" value={settings.accent} options={ACCENTS} onChange={(v) => void saveSetting('accent', v).catch(() => toast("Couldn't save. Try again."))} />
           {speech.available && (
             <Button variant="outline" icon={<Volume2 size={20} />} onClick={() => speech.say('Hello! This is how your words will sound.')}>
               Test voice
@@ -116,7 +116,7 @@ export function SettingsPage() {
           Appearance
         </h2>
         <div className={`card ${styles.box}`}>
-          <Segmented name="theme" label="Theme" value={settings.theme} options={THEMES} onChange={(v) => void saveSetting('theme', v)} />
+          <Segmented name="theme" label="Theme" value={settings.theme} options={THEMES} onChange={(v) => void saveSetting('theme', v).catch(() => toast("Couldn't save. Try again."))} />
         </div>
       </section>
 

@@ -319,6 +319,17 @@ describe('SetEditorPage leaving and saving', () => {
     expect(screen.getByLabelText('Title')).toHaveValue('Draft');
   });
 
+  it('asks before discarding pasted text that was not added to the cards yet', async () => {
+    const { user, router } = renderRoute('/create');
+    await user.click(await screen.findByLabelText(/One pair per line/));
+    await user.paste('gate - brána');
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.getByText('Discard changes?')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/create');
+    await user.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(await screen.findByText('Create your first set')).toBeInTheDocument();
+  });
+
   it('closes without a prompt when nothing was changed', async () => {
     const { user } = renderRoute('/create');
     await screen.findByLabelText('Title');

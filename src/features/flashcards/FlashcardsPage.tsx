@@ -20,6 +20,7 @@ import { Button } from '../../ui/Button';
 import { CardBack } from '../../ui/CardBack';
 import { EmptyState } from '../../ui/EmptyState';
 import { Sheet } from '../../ui/Sheet';
+import { useToast } from '../../ui/Toast';
 import { Switch } from '../../ui/Switch';
 import { flashcardReducer, initialFlashcardState, isFinished, tally, type SortResult } from './flashcardSession';
 import styles from './FlashcardsPage.module.css';
@@ -31,6 +32,7 @@ const stopPointer = (e: { stopPropagation: () => void }) => e.stopPropagation();
 export function FlashcardsPage() {
   const { setId = '' } = useParams();
   const leave = useLeave(`/sets/${setId}`);
+  const toast = useToast();
   const { flashcards: prefs } = useSettings();
   const { available: canSpeak, say } = useSpeech();
   const { loading, set, cards } = useSetData(setId);
@@ -66,7 +68,7 @@ export function FlashcardsPage() {
   }, [loadedSetId, awaitingDeck]);
 
   useEffect(() => {
-    if (loadedSetId) void markStudied(loadedSetId);
+    if (loadedSetId) void markStudied(loadedSetId).catch(() => undefined); // a failed "last studied" stamp is not worth a toast
   }, [loadedSetId]);
 
   const current = byId.get(state.order[state.index] ?? '');
@@ -99,7 +101,8 @@ export function FlashcardsPage() {
   if (loading) return null;
   if (!set) return <NotFound title="This set doesn't exist" />;
 
-  const savePrefs = (patch: Partial<FlashcardPrefs>) => void saveSetting('flashcards', { ...prefs, ...patch });
+  const savePrefs = (patch: Partial<FlashcardPrefs>) =>
+    void saveSetting('flashcards', { ...prefs, ...patch }).catch(() => toast("Couldn't save. Try again."));
   const closeButton = <IconButton label="Close" icon={<X size={20} />} onClick={leave} />;
 
   if (deckIds.length === 0) {
@@ -204,7 +207,7 @@ export function FlashcardsPage() {
               onPointerUp={stopPointer}
               onClick={(e) => {
                 e.stopPropagation();
-                void toggleStar(current.id);
+                void toggleStar(current.id).catch(() => toast("Couldn't save. Try again."));
               }}
             />
           ) : (

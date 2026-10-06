@@ -123,6 +123,22 @@ describe('speak', () => {
     expect(utterance.voice).toBeNull();
   });
 
+  it('never throws when the speech API does', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    synth.speak.mockImplementation(() => {
+      throw new Error('synthesis-failed');
+    });
+    expect(() => speak('hello', 'en-US')).not.toThrow();
+    synth.cancel.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    expect(() => speak('hello', 'en-US')).not.toThrow();
+    synth.getVoices.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    expect(() => speak('hello', 'en-US')).not.toThrow();
+  });
+
   it('does not cancel current speech when the text is blank', () => {
     const synth = stubSpeech([voice('en-US')]);
     speak('  ', 'en-US');

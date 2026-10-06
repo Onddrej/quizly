@@ -181,7 +181,7 @@ export function SetPage() {
               label={`Star ${c.term}`}
               aria-pressed={c.starred}
               icon={<Star size={20} />}
-              onClick={() => void toggleStar(c.id)}
+              onClick={() => void toggleStar(c.id).catch(() => toast("Couldn't save. Try again."))}
             />
           </li>
         ))}
