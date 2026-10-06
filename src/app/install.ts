@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -31,13 +31,21 @@ function subscribe(listener: () => void) {
 
 export function useInstallPrompt(): { canInstall: boolean; install: () => Promise<void> } {
   const canInstall = useSyncExternalStore(subscribe, () => deferred !== null, () => false);
+  const prompting = useRef(false);
   const install = useCallback(async () => {
     const event = deferred;
-    if (!event) return;
-    await event.prompt();
-    await event.userChoice;
-    deferred = null;
-    notify();
+    if (!event || prompting.current) return;
+    prompting.current = true;
+    try {
+      await event.prompt();
+      await event.userChoice;
+    } catch {
+      // The browser refused the prompt (for example it was already used): there is nothing left to offer either way.
+    } finally {
+      prompting.current = false;
+      deferred = null;
+      notify();
+    }
   }, []);
   return { canInstall, install };
 }

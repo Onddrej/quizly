@@ -3,7 +3,7 @@ import { Download, Smartphone, Upload, Volume2 } from 'lucide-react';
 import { useSettings } from '../../app/SettingsContext';
 import { useInstallPrompt } from '../../app/install';
 import { saveSetting } from '../../db/settings';
-import { BackupError, backupFileName, createBackup, importBackup, parseBackup, serializeBackup, type Backup } from '../../db/backup';
+import { BackupError, backupFileName, countExistingSets, createBackup, importBackup, parseBackup, serializeBackup, type Backup } from '../../db/backup';
 import type { Accent, ThemePref } from '../../db/types';
 import { useSpeech } from '../../lib/useSpeech';
 import { Page } from '../../ui/Page';
@@ -29,20 +29,33 @@ const THEMES = [
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Sets are never lost silently: the preview says how many sets on this device the import overwrites. */
+function replaceNote(replaced: number): string {
+  if (replaced === 0) return 'Nothing on this device will be replaced.';
+  if (replaced === 1) return '1 set is already on this device and will be replaced, including its progress.';
+  return `${replaced} sets are already on this device and will be replaced, including their progress.`;
+}
+
 export function SettingsPage() {
   const settings = useSettings();
   const toast = useToast();
   const speech = useSpeech();
   const { canInstall, install } = useInstallPrompt();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [pending, setPending] = useState<Backup | null>(null);
+  const importButton = useRef<HTMLButtonElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const [pending, setPending] = useState<{ backup: Backup; replaced: number } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
   async function exportBackup() {
+    setExporting(true);
     try {
       downloadText(backupFileName(new Date()), serializeBackup(await createBackup()));
+      toast('Backup downloaded');
     } catch {
       toast("Couldn't export. Try again.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -50,7 +63,8 @@ export function SettingsPage() {
     setImportError(null);
     setPending(null);
     try {
-      setPending(parseBackup(await readFileText(file)));
+      const backup = parseBackup(await readFileText(file));
+      setPending({ backup, replaced: await countExistingSets(backup) });
     } catch (error) {
       setImportError(error instanceof BackupError ? error.message : "Couldn't read this file.");
     } finally {
@@ -60,13 +74,21 @@ export function SettingsPage() {
 
   async function confirmImport() {
     if (!pending) return;
+    setImportError(null);
     try {
-      const result = await importBackup(pending);
+      const result = await importBackup(pending.backup);
       setPending(null);
+      importButton.current?.focus();
       toast(`Imported ${plural(result.sets, 'set')}`);
     } catch {
       setImportError("Couldn't import. Nothing was changed.");
     }
+  }
+
+  function closePreview() {
+    setPending(null);
+    setImportError(null);
+    importButton.current?.focus();
   }
 
   return (
@@ -105,17 +127,16 @@ export function SettingsPage() {
         <div className={`card ${styles.box}`}>
           <p className={styles.note}>Your sets are stored only on this device. Export a backup now and then.</p>
           <div className={styles.buttons}>
-            <Button variant="outline" icon={<Download size={20} />} onClick={() => void exportBackup()}>
+            <Button variant="outline" icon={<Download size={20} />} disabled={exporting} onClick={() => void exportBackup()}>
               Export backup
             </Button>
-            <Button variant="outline" icon={<Upload size={20} />} onClick={() => fileInput.current?.click()}>
+            <Button ref={importButton} variant="outline" icon={<Upload size={20} />} onClick={() => fileInput.current?.click()}>
               Import backup
             </Button>
           </div>
           <input
             ref={fileInput}
             type="file"
-            accept="application/json,.json"
             aria-label="Backup file"
             tabIndex={-1}
             className="visually-hidden"
@@ -131,10 +152,10 @@ export function SettingsPage() {
           )}
           {pending && (
             <InlineConfirm
-              message={`Import ${plural(pending.sets.length, 'set')} and ${plural(pending.cards.length, 'card')}? Sets that already exist on this device will be replaced.`}
+              message={`Import ${plural(pending.backup.sets.length, 'set')} and ${plural(pending.backup.cards.length, 'card')}? ${replaceNote(pending.replaced)}`}
               confirmLabel="Import"
               onConfirm={() => void confirmImport()}
-              onCancel={() => setPending(null)}
+              onCancel={closePreview}
             />
           )}
         </div>

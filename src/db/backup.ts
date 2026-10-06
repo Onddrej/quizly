@@ -96,6 +96,11 @@ export function parseBackup(text: string): Backup {
   };
 }
 
+/** How many of the backup's sets are already on this device (matched by id), so importing them would replace them and their progress. Reads only. */
+export async function countExistingSets(backup: Backup): Promise<number> {
+  return (await db.sets.bulkGet(backup.sets.map((s) => s.id))).filter(Boolean).length;
+}
+
 /**
  * Sets with the same id are replaced together with all their cards; everything runs in one transaction. Once it has
  * committed, asks the browser for persistent storage (spec 6.3): restoring a backup into a fresh profile is the first save there.
