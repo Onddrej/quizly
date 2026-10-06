@@ -1,7 +1,7 @@
 # Quizly v1 – špecifikácia
 
 - **Dátum:** 2026-10-01
-- **Stav:** návrh na schválenie
+- **Stav:** implementované (v1)
 - **Revízia 2026-10-02:** karta má povinný preklad a voliteľnú definíciu a príkladové vety (pozri 5.7)
 - **Produktový kontext:** [PRODUCT.md](../../../PRODUCT.md)
 - **Schválený dizajn:** [docs/design/screens-v1.html](../../design/screens-v1.html) (publikované aj ako [artifact](https://claude.ai/artifact/QNCG6bYrZLEGL1y9r4FBgq))

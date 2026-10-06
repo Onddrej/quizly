@@ -6,6 +6,8 @@ Personal Quizlet-style vocabulary PWA (sets, flashcards, pronunciation, Learn mo
 - Spec (Slovak): docs/superpowers/specs/2026-10-01-quizly-v1-design.md
 - Implementation plan: docs/superpowers/plans/2026-10-01-quizly-v1.md
 - Approved design: docs/design/screens-v1.html
+- Design system (tokens, components): DESIGN.md
+- Card-details amendment (translation, definition, examples): docs/superpowers/plans/2026-10-02-card-details-amendment.md
 
 ## Commands
 - `npm run dev` – dev server at http://localhost:5173/quizly/

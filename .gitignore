@@ -7,3 +7,6 @@ Thumbs.db
 *.log
 .env
 .env.*
+
+# local cache of the impeccable design hook
+.impeccable/hook.cache.json

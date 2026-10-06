@@ -25,13 +25,13 @@ Quizlet's familiar study flow, including Learn mode, with no subscription, no ad
 ## Operating Context
 
 - Sets are created by typing terms or pasting a whole word list at once (one pair per line).
-- Terms are English; definitions are usually Slovak.
+- Terms are English. A card's answer side is a Slovak translation, plus an optional English definition and example sentences.
 - Pronunciation comes from the device's text-to-speech voices (Web Speech API), not recorded audio, so any added word can be spoken.
 - Study happens one-handed on a phone, often in short bursts.
 
 ## Capabilities and Constraints
 
-- v1 scope: sets (create, edit, delete, bulk paste), flashcards, pronunciation, Learn mode (multiple choice, then typing the English term, then typing the definition, in rounds until every term is mastered).
+- v1 scope: sets (create, edit, delete, bulk paste), flashcards, pronunciation, Learn mode (multiple choice, then typing the English term, then typing the translation, in rounds until every term is mastered).
 - Interface language: English.
 - Pronunciation: English, with a US/UK voice preference.
 - Answer checking in Learn mode tolerates case, diacritics and small typos.
