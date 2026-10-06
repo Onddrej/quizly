@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useRouteError } from 'react-router';
+import { diagnostics } from '../lib/diagnostics';
 import { Page } from '../ui/Page';
 import { TopBar } from '../ui/TopBar';
 import { EmptyState } from '../ui/EmptyState';
@@ -11,6 +12,7 @@ export function RouteError() {
 
   useEffect(() => {
     console.error(error);
+    diagnostics.recordError('render', error);
   }, [error]);
 
   return (

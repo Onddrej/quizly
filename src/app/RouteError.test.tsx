@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { RouteError } from './RouteError';
 import { routes } from './routes';
+import { diagnostics } from '../lib/diagnostics';
 
 const failure = new Error('boom');
 
@@ -39,6 +40,13 @@ describe('RouteError', () => {
     const router = createMemoryRouter([{ errorElement: <RouteError />, children: [{ path: '/', element: <Boom /> }] }]);
     render(<RouterProvider router={router} />);
     expectPlainErrorPage();
+  });
+
+  it('writes the error to the diagnostics log', () => {
+    localStorage.clear();
+    const router = createMemoryRouter([{ errorElement: <RouteError />, children: [{ path: '/', element: <Boom /> }] }]);
+    render(<RouterProvider router={router} />);
+    expect(diagnostics.entries()).toMatchObject([{ kind: 'render', message: 'Error: boom' }]);
   });
 
   it('is wired into the app route table', () => {

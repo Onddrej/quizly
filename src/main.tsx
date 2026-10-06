@@ -8,9 +8,11 @@ import '@fontsource/figtree/700.css';
 import '@fontsource/figtree/800.css';
 import './styles/tokens.css';
 import './styles/global.css';
+import { installErrorLogging } from './app/errorLogging';
 import { initInstallPrompt } from './app/install';
 import { App } from './app/App';
 
+installErrorLogging();
 initInstallPrompt();
 
 createRoot(document.getElementById('root')!).render(
