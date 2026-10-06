@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-06T00:00:00Z",
+  "title": "Design System: Quizly",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Action Blue", "canonical": "#4255FF", "tonalRamp": ["#10145C", "#1A24A8", "#2A3BE0", "#4255FF", "#6F7EFF", "#9BA5FF", "#C8CEFF", "#E7EAFF"] },
+      "bg": { "role": "neutral", "displayName": "Mist", "canonical": "#F6F7FB", "tonalRamp": ["#282E3E", "#586380", "#8A93AD", "#B8BFD6", "#D9DDE8", "#EDEFF4", "#F6F7FB", "#FFFFFF"] },
+      "good": { "role": "secondary", "displayName": "Mastered Green", "canonical": "#0F7A56", "tonalRamp": ["#063D2B", "#0F7A56", "#18AE79", "#4ED6A0", "#8BE6C2", "#BDF0DA", "#E1F5EC", "#F2FBF7"] },
+      "learning": { "role": "secondary", "displayName": "Learning Orange", "canonical": "#B05200", "tonalRamp": ["#5A2A00", "#B05200", "#FF983A", "#FFB066", "#FFC994", "#FFDDBB", "#FFF0E0", "#FFF8F0"] },
+      "bad": { "role": "secondary", "displayName": "Miss Red", "canonical": "#C43626", "tonalRamp": ["#611B13", "#C43626", "#FF725B", "#FF9C8C", "#FFBCB0", "#FFD6CE", "#FDEBE7", "#FFF6F4"] },
+      "bg-dark": { "role": "neutral", "displayName": "Deep Navy", "canonical": "#0A092D", "tonalRamp": ["#0A092D", "#1B1F46", "#2E3856", "#3D4772", "#586380", "#B8BFD6", "#EDEFF4", "#F6F7FB"] },
+      "star": { "role": "tertiary", "displayName": "Star Gold", "canonical": "#F5B800", "tonalRamp": ["#5C4500", "#9A7500", "#F5B800", "#FFCD1F", "#FFDB5C", "#FFE892", "#FFF3C4", "#FFFAE6"] }
+    },
+    "typographyMeta": {
+      "wordmark": { "displayName": "Wordmark", "purpose": "Home top-left, 22px/800 Link Ink Blue." },
+      "headline": { "displayName": "Headline", "purpose": "Round summary and screen headings, 28px/800." },
+      "card-term": { "displayName": "Card term", "purpose": "The word being studied in Learn, 30px/700; flashcard face 28px/700." },
+      "title": { "displayName": "Title", "purpose": "Card, sheet and feedback titles, 17px." },
+      "body": { "displayName": "Body", "purpose": "Default 15px/400/1.5." },
+      "control": { "displayName": "Control", "purpose": "Buttons, rows, inputs, options, 15 to 16px at 600 to 700." },
+      "caption": { "displayName": "Caption", "purpose": "Metadata, legends, counts, 13 to 14px tabular numerals." }
+    },
+    "shadows": [
+      { "name": "shadow", "value": "0 1px 2px rgba(40,46,62,.06), 0 6px 18px rgba(40,46,62,.08)", "purpose": "Cards, list rows, toast, switch knob, active segment. Dark: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.32)." },
+      { "name": "sheet-shadow", "value": "0 -8px 24px -12px rgba(40,46,62,.3)", "purpose": "Bottom sheet and Learn feedback panel. Dark: rgba(0,0,0,.6)." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.2, .8, .2, 1)", "purpose": "Movement: slides, card flip (420ms), pager and progress changes." },
+      { "name": "state-transition", "value": ".15s ease-out", "purpose": "Colour and border changes; press transforms .1s." }
+    ],
+    "breakpoints": [
+      { "name": "content-max", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action per view, full width at the bottom on phones.",
+      "html": "<button class=\"ds-btn-primary\">Continue learning</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px; border: 0; border-radius: var(--r-ctl, 12px); background: var(--accent, #4255FF); color: var(--on-accent, #fff); font-weight: 700; font-size: 15px; transition: background-color .15s ease-out, transform .1s ease-out; } .ds-btn-primary:hover { background: var(--accent-press, #3443E6); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent-ink, #3446F0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action next to a primary.",
+      "html": "<button class=\"ds-btn-outline\">Shuffle</button>",
+      "css": ".ds-btn-outline { min-height: 48px; padding: 0 20px; border-radius: var(--r-ctl, 12px); background: var(--surface, #fff); color: var(--ink, #282E3E); border: 2px solid var(--line, #D9DDE8); font-weight: 700; font-size: 15px; transition: border-color .15s ease-out; } .ds-btn-outline:hover { border-color: var(--ink-2, #586380); } .ds-btn-outline:focus-visible { outline: 2px solid var(--accent-ink, #3446F0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Set Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White 16px card with ambient shadow; set rows and the resume card use it.",
+      "html": "<div class=\"ds-card\"><b>Travel words</b><span>24 terms</span></div>",
+      "css": ".ds-card { display: grid; gap: 2px; padding: 14px 16px; border-radius: var(--r-card, 16px); background: var(--surface, #fff); color: var(--ink, #282E3E); box-shadow: var(--shadow, 0 1px 2px rgba(40,46,62,.06), 0 6px 18px rgba(40,46,62,.08)); } .ds-card b { font-size: 16px; font-weight: 700; } .ds-card span { font-size: 13px; color: var(--ink-2, #586380); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Small blue-wash label.",
+      "html": "<span class=\"ds-chip\">Learning</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--r-pill, 999px); background: var(--accent-soft, #E7EAFF); color: var(--accent-ink, #3446F0); font-size: 12px; font-weight: 700; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "2px bordered box on Home; focus border turns Action Blue.",
+      "html": "<input class=\"ds-search\" placeholder=\"Search sets\">",
+      "css": ".ds-search { width: 100%; min-height: 48px; padding: 0 16px; border: 2px solid var(--line, #D9DDE8); border-radius: var(--r-ctl, 12px); background: var(--surface, #fff); color: var(--ink, #282E3E); font-size: 16px; } .ds-search:focus { outline: none; border-color: var(--accent, #4255FF); }"
+    },
+    {
+      "name": "Answer Option",
+      "kind": "custom",
+      "refersTo": "answer-option",
+      "description": "Learn multiple-choice option; correct and wrong states use fill border plus soft tint.",
+      "html": "<button class=\"ds-option\">to wander</button>",
+      "css": ".ds-option { width: 100%; min-height: 56px; display: flex; align-items: center; padding: 12px 16px; border: 2px solid var(--line, #D9DDE8); border-radius: var(--r-ctl, 12px); background: var(--surface, #fff); color: var(--ink, #282E3E); font-size: 16px; font-weight: 600; text-align: left; transition: border-color .15s ease-out; } .ds-option:hover { border-color: var(--ink-2, #586380); } .ds-option:focus-visible { outline: 2px solid var(--accent-ink, #3446F0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Bottom bar Home / add / Settings; active tab Link Ink Blue, add is a blue circle.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab ds-active\">Home</a><a class=\"ds-plus\">+</a><a class=\"ds-tab\">Settings</a></nav>",
+      "css": ".ds-tabs { display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; padding: 8px 12px 10px; background: var(--surface, #fff); border-top: 1px solid var(--line, #D9DDE8); } .ds-tab { justify-self: center; padding: 4px 0; font-size: 12px; font-weight: 600; color: var(--ink-2, #586380); text-decoration: none; } .ds-active { color: var(--accent-ink, #3446F0); } .ds-plus { justify-self: center; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--accent, #4255FF); color: var(--on-accent, #fff); } .ds-plus:hover { background: var(--accent-press, #3443E6); }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "StageBar: mastered (green) and learning (orange) segments on a track.",
+      "html": "<div class=\"ds-bar\"><span class=\"ds-m\" style=\"width:40%\"></span><span class=\"ds-l\" style=\"width:25%\"></span></div>",
+      "css": ".ds-bar { display: flex; height: 10px; border-radius: var(--r-pill, 999px); background: var(--surface-2, #EDEFF4); overflow: hidden; } .ds-bar span { display: block; height: 100%; } .ds-m { background: var(--good-fill, #18AE79); } .ds-l { background: var(--learning-fill, #FF983A); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Desk",
+    "overview": "Quizly is Quizlet's study loop played straight: the app steps aside and leaves the word, its sound and the next step. The ground is a cool grey-blue (light) or deep navy (dark), cards are white or lifted navy with 16px corners, a single blue carries every action, and green, orange and red appear only to report learning state. Nothing asks the owner to relearn a layout; familiarity is the feature.\n\nDensity is comfortable and thumb-first: one column at most 560px wide, 48px minimum controls, bottom-anchored primary actions. Depth is soft and ambient, motion is short and functional, and type is one family at confident weights.",
+    "keyCharacteristics": [
+      "One blue for actions; green, orange and red only for learning state.",
+      "Rounded-but-not-bubbly: 12px controls, 16px cards, 20px sheets and flashcards.",
+      "Figtree only, heavy weights (600 to 800) for hierarchy, sentence case.",
+      "Light and dark themes with identical roles; dark is a navy, not black.",
+      "Lucide icons, stroke style, paired with text or an accessible name."
+    ],
+    "rules": [
+      { "name": "The Token-Only Rule", "body": "Components never carry a literal colour; every colour is a variable from src/styles/tokens.css. The one literal fallback is the #F6F7FB meta theme-color default in ThemeSync.", "section": "colors" },
+      { "name": "The State-Colour Rule", "body": "Green, orange and red mean learning state or error and nothing else. Decoration uses blue or neutrals.", "section": "colors" },
+      { "name": "The Text-Variant Rule", "body": "Coloured text uses the text variants (good, bad, learning, accent-ink); the -fill variants are for bars, borders and dots, never for small text.", "section": "colors" },
+      { "name": "The Two-Declaration Rule", "body": "The dark set exists twice in tokens.css (prefers-color-scheme rule and :root[data-theme=\"dark\"]). Change both together.", "section": "colors" },
+      { "name": "The Weight-Not-Size Rule", "body": "Hierarchy is carried by weight (400, 600, 700, 800) in a tight 12 to 17px band; sizes above 17px are reserved for the term being studied and screen headings.", "section": "typography" },
+      { "name": "The Tabular Rule", "body": "Counts, progress and timers use font-variant-numeric: tabular-nums.", "section": "typography" },
+      { "name": "The Soft-Shadow Rule", "body": "Shadows are blurred and low-contrast; hard offset shadows do not exist in this system.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do take every colour from a token in src/styles/tokens.css and set both theme blocks together.",
+      "Do use Action Blue for the single primary action per view and keep it at the bottom within thumb reach.",
+      "Do use -fill colours for bars and borders and text variants for coloured text.",
+      "Do keep controls at 12px radius, cards at 16px, sheets and the flashcard at 20px.",
+      "Do show absent card-back parts as nothing, never as empty placeholders.",
+      "Do pair every icon (Lucide) with a visible label or an accessible name."
+    ],
+    "donts": [
+      "Don't use green, orange or red for decoration; they mean learning state or error.",
+      "Don't use hard offset shadows or heavy borders on cards; depth is the soft card shadow.",
+      "Don't introduce a second accent colour or a new font family.",
+      "Don't reinvent layouts the owner already knows from Quizlet (tab bar, resume card, flip card, option list).",
+      "Don't rely on hover for any function; hover styling is gated to hover-capable pointers."
+    ]
+  }
+}
