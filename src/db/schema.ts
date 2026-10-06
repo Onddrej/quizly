@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { Card, SettingRow, StudySet } from './types';
+import { diagnostics } from '../lib/diagnostics';
 
 export class QuizlyDB extends Dexie {
   sets!: EntityTable<StudySet, 'id'>;
@@ -19,6 +20,8 @@ export class QuizlyDB extends Dexie {
 export const db = new QuizlyDB();
 
 /** Opens the database; rejects when IndexedDB is unavailable (e.g. some private browsing modes). */
-export async function openDatabase(): Promise<void> {
-  await db.open();
+export function openDatabase(): Promise<void> {
+  return diagnostics.trace('openDatabase', async () => {
+    await db.open();
+  });
 }

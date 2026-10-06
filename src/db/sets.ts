@@ -1,8 +1,10 @@
 // Writes keyed by an id that does not exist are silent no-ops, except updateSet, which throws.
 
 import { db } from './schema';
+import { tracedTransaction } from './trace';
 import type { Card, StudySet } from './types';
 import { normalizeCardDetails } from '../lib/cardDetails';
+import { diagnostics } from '../lib/diagnostics';
 import { newId } from '../lib/id';
 import { countStatuses, type StatusCounts } from '../lib/progress';
 import { requestPersistentStorage } from '../lib/storage';
@@ -50,7 +52,7 @@ export function getSet(setId: string): Promise<StudySet | undefined> {
 /** Not idempotent: every call creates a new set (the editor disables Save while saving). Asks the browser for persistent storage (spec 6.3). */
 export async function createSet(draft: SetDraft, now: number = Date.now()): Promise<string> {
   const id = newId();
-  await db.transaction('rw', db.sets, db.cards, async () => {
+  await tracedTransaction('createSet', 'rw', [db.sets, db.cards], async () => {
     await db.sets.add({
       id,
       title: draft.title.trim(),
@@ -73,7 +75,7 @@ export async function createSet(draft: SetDraft, now: number = Date.now()): Prom
  * Throws, and writes nothing, when the set does not exist.
  */
 export async function updateSet(setId: string, draft: SetDraft, now: number = Date.now()): Promise<void> {
-  await db.transaction('rw', db.sets, db.cards, async () => {
+  await tracedTransaction('updateSet', 'rw', [db.sets, db.cards], async () => {
     const updated = await db.sets.update(setId, { title: draft.title.trim(), definitionLang: draft.definitionLang, updatedAt: now });
     if (updated === 0) throw new Error('Set not found');
     const existing = await db.cards.where('setId').equals(setId).toArray();
@@ -95,7 +97,7 @@ export async function updateSet(setId: string, draft: SetDraft, now: number = Da
 }
 
 export async function deleteSet(setId: string): Promise<void> {
-  await db.transaction('rw', db.sets, db.cards, async () => {
+  await tracedTransaction('deleteSet', 'rw', [db.sets, db.cards], async () => {
     await db.cards.where('setId').equals(setId).delete();
     await db.sets.delete(setId);
   });
@@ -103,7 +105,7 @@ export async function deleteSet(setId: string): Promise<void> {
 
 /** Puts every card of the set back to stage 0 (answer times cleared) and the round to 1. Stars and lastStudiedAt are kept. */
 export async function resetProgress(setId: string): Promise<void> {
-  await db.transaction('rw', db.sets, db.cards, async () => {
+  await tracedTransaction('resetProgress', 'rw', [db.sets, db.cards], async () => {
     await db.cards.where('setId').equals(setId).modify((card) => {
       card.stage = 0;
       delete card.lastAnsweredAt;
@@ -112,28 +114,34 @@ export async function resetProgress(setId: string): Promise<void> {
   });
 }
 
-export async function completeRound(setId: string): Promise<void> {
-  await db.sets.where('id').equals(setId).modify((set) => {
-    set.learnRound += 1;
+export function completeRound(setId: string): Promise<void> {
+  return diagnostics.trace('completeRound', async () => {
+    await db.sets.where('id').equals(setId).modify((set) => {
+      set.learnRound += 1;
+    });
   });
 }
 
-export async function markStudied(setId: string, now: number = Date.now()): Promise<void> {
-  await db.sets.update(setId, { lastStudiedAt: now });
+export function markStudied(setId: string, now: number = Date.now()): Promise<void> {
+  return diagnostics.trace('markStudied', async () => {
+    await db.sets.update(setId, { lastStudiedAt: now });
+  });
 }
 
-export async function listSetSummaries(): Promise<SetSummary[]> {
-  const [sets, cards] = await Promise.all([db.sets.toArray(), db.cards.toArray()]);
-  const bySet = new Map<string, Card[]>();
-  for (const card of cards) {
-    const list = bySet.get(card.setId) ?? [];
-    list.push(card);
-    bySet.set(card.setId, list);
-  }
-  return sets
-    .map((set) => {
-      const list = bySet.get(set.id) ?? [];
-      return { set, total: list.length, counts: countStatuses(list) };
-    })
-    .sort((a, b) => (b.set.lastStudiedAt ?? b.set.updatedAt) - (a.set.lastStudiedAt ?? a.set.updatedAt));
+export function listSetSummaries(): Promise<SetSummary[]> {
+  return diagnostics.trace('listSetSummaries', async () => {
+    const [sets, cards] = await Promise.all([db.sets.toArray(), db.cards.toArray()]);
+    const bySet = new Map<string, Card[]>();
+    for (const card of cards) {
+      const list = bySet.get(card.setId) ?? [];
+      list.push(card);
+      bySet.set(card.setId, list);
+    }
+    return sets
+      .map((set) => {
+        const list = bySet.get(set.id) ?? [];
+        return { set, total: list.length, counts: countStatuses(list) };
+      })
+      .sort((a, b) => (b.set.lastStudiedAt ?? b.set.updatedAt) - (a.set.lastStudiedAt ?? a.set.updatedAt));
+  });
 }

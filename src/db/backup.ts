@@ -1,4 +1,5 @@
 import { db } from './schema';
+import { tracedTransaction } from './trace';
 import type { Card, Stage, StudySet } from './types';
 import { normalizeCardDetails } from '../lib/cardDetails';
 import { requestPersistentStorage } from '../lib/storage';
@@ -23,7 +24,7 @@ export class BackupError extends Error {
  * parseBackup rejects the whole file because of a single orphan card, and the owner must always be able to restore their own backup.
  */
 export async function createBackup(now: Date = new Date()): Promise<Backup> {
-  const { sets, cards } = await db.transaction('r', db.sets, db.cards, async () => ({
+  const { sets, cards } = await tracedTransaction('createBackup', 'r', [db.sets, db.cards], async () => ({
     sets: await db.sets.toArray(),
     cards: await db.cards.toArray(),
   }));
@@ -106,7 +107,7 @@ export async function countExistingSets(backup: Backup): Promise<number> {
  * committed, asks the browser for persistent storage (spec 6.3): restoring a backup into a fresh profile is the first save there.
  */
 export async function importBackup(backup: Backup): Promise<{ sets: number; cards: number }> {
-  await db.transaction('rw', db.sets, db.cards, async () => {
+  await tracedTransaction('importBackup', 'rw', [db.sets, db.cards], async () => {
     for (const set of backup.sets) {
       await db.cards.where('setId').equals(set.id).delete();
     }
