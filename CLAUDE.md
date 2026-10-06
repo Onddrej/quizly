@@ -14,6 +14,8 @@ Personal Quizlet-style vocabulary PWA (sets, flashcards, pronunciation, Learn mo
 - `npm run typecheck`
 - `npm run build` – type check + production build to dist/
 - `npm run preview` – serve dist/ at http://localhost:4173/quizly/
+- `npm run icons` – regenerate the PWA icons and favicon.ico in public/ from public/logo.svg
+- The service worker exists only in `npm run build` + `npm run preview`, not in `npm run dev`.
 
 ## Git
 - Repo: github.com/Onddrej/quizly, personal account Onddrej. Local git identity is already set.
