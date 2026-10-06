@@ -227,8 +227,8 @@ Revízia 2026-10-02. Odpovedná strana slovíčka má až tri časti; druhé dve
 - Schéma DB (verzia 1, bez nových indexov), staré karty a staré zálohy ostávajú platné.
 
 **Editor (4.2).**
-- Každá kartička má povinné polia Term a Translation. Pod nimi je riadok-tlačidlo „Add definition and examples" (so šípkou, `aria-expanded`), ktoré rozbalí pole Definition (jednoriadkové) a Examples (viacriadkové, nápoveda „One or two sentences, one per line.").
-- Panel je pri novej kartičke zbalený. Pri úprave sa rozbalí automaticky, ak karta už má Definition alebo Examples. Zbalenie panelu polia len skryje; ich text sa zachová a uloží. Keď je panel zbalený a polia sú vyplnené, tlačidlo sa volá „Edit definition and examples".
+- Každá kartička má povinné polia Term a Translation. Pod nimi je riadok-tlačidlo „Add definition and examples" (so šípkou, `aria-expanded`), ktoré rozbalí pole Definition a Examples. Definition je viacriadkové pole, ktoré sa automaticky zväčšuje (začína ako jeden riadok a rastie s textom, takže dlhá definícia sa neorezáva); Examples je viacriadkové pole s minimom dvoch riadkov a nápovedou „One or two sentences, one per line.".
+- Panel je pri novej kartičke zbalený. Pri úprave sa rozbalí automaticky, ak karta už má Definition alebo Examples. Zbalenie panelu polia len skryje; ich text sa zachová a uloží. Tlačidlo sa volá „Add definition and examples", keď je panel zbalený a prázdny, „Edit definition and examples", keď je zbalený a vyplnený, a „Hide definition and examples", keď je rozbalený.
 - Chyby: chýbajúci pojem „Add a term", chýbajúci preklad „Add a translation". Voliteľné polia sa nevalidujú. Kartička je prázdna (a pri uložení sa ignoruje), keď sú prázdne všetky štyri polia; ak je vyplnená len definícia alebo príklad, zobrazia sa chyby pri pojme a preklade.
 - Hromadné vloženie (5.3) vytvára len pojem a preklad; voliteľné polia sa dopĺňajú v kartičkách.
 

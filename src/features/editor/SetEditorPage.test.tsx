@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
@@ -95,6 +95,7 @@ describe('SetEditorPage card details', () => {
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAccessibleName('Hide definition and examples');
     const panel = document.getElementById(toggle.getAttribute('aria-controls') ?? '');
     const meaning = screen.getByLabelText('Definition');
     const examples = screen.getByLabelText('Examples');
@@ -104,10 +105,11 @@ describe('SetEditorPage card details', () => {
     expect(examples).toHaveAttribute('lang', 'en');
     expect(examples).toHaveAccessibleDescription('One or two sentences, one per line.');
     // the other new card stays closed
-    expect(screen.getAllByRole('button', OPEN)[1]).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', OPEN)).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAccessibleName('Add definition and examples');
     expect(screen.queryByLabelText('Definition')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Examples')).not.toBeInTheDocument();
   });
@@ -155,7 +157,9 @@ describe('SetEditorPage card details', () => {
     await screen.findByDisplayValue('gate');
     const [withDetails, without] = screen.getAllByRole('button', { name: /definition and examples/ });
     expect(withDetails).toHaveAttribute('aria-expanded', 'true');
+    expect(withDetails).toHaveAccessibleName('Hide definition and examples');
     expect(without).toHaveAttribute('aria-expanded', 'false');
+    expect(without).toHaveAccessibleName('Add definition and examples');
     expect(screen.getByLabelText('Definition')).toHaveValue('a door at an airport');
     expect(screen.getByLabelText('Examples')).toHaveValue('Gate 12 is open.\nPlease go to the gate.');
   });
@@ -218,6 +222,7 @@ describe('SetEditorPage card details', () => {
     await user.click(toggle);
     await fill(user, screen.getByLabelText('Definition'), 'a door at an airport');
     await fill(user, screen.getByLabelText('Examples'), 'Gate 12 is open.');
+    expect(toggle).toHaveAccessibleName('Hide definition and examples');
     await user.click(toggle);
 
     expect(screen.queryByLabelText('Definition')).not.toBeInTheDocument();
@@ -234,6 +239,31 @@ describe('SetEditorPage card details', () => {
     expect(await db.cards.toArray()).toMatchObject([
       { term: 'gate', definition: 'brána', meaning: 'a door at an airport', examples: 'Gate 12 is open.' },
     ]);
+  });
+
+  it('edits the definition in a one-row growing textarea and keeps a long definition in full', async () => {
+    const long =
+      'bags and suitcases that you take with you when you travel, especially the ones that you check in at the counter before a flight';
+    const { user } = renderRoute('/create');
+    await user.type(await screen.findByLabelText('Title'), 'Airport');
+    await user.type(screen.getAllByLabelText('Term')[0], 'luggage');
+    await user.type(screen.getAllByLabelText('Translation')[0], 'batožina');
+    await user.click(screen.getAllByRole('button', OPEN)[0]);
+    const meaning = screen.getByLabelText('Definition');
+    expect(meaning.tagName).toBe('TEXTAREA');
+    expect(meaning).toHaveAttribute('rows', '1');
+    expect(screen.getByLabelText('Examples')).toHaveAttribute('rows', '2');
+    await fill(user, meaning, long);
+    expect(meaning).toHaveValue(long);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('heading', { name: 'Airport' });
+    expect(await db.cards.toArray()).toMatchObject([{ term: 'luggage', definition: 'batožina', meaning: long }]);
+
+    // and it comes back whole when the set is edited again
+    const [set] = await db.sets.toArray();
+    cleanup();
+    renderRoute(`/sets/${set.id}/edit`);
+    expect(await screen.findByLabelText('Definition')).toHaveValue(long);
   });
 
   it('keeps a card that only has a definition when a list is pasted', async () => {

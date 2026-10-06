@@ -15,6 +15,16 @@ describe('FieldArea', () => {
     expect(area).not.toHaveAttribute('aria-invalid');
   });
 
+  it('sizes its minimum height from the rows prop (two rows by default)', () => {
+    const { rerender } = render(<FieldArea id="ex" label="Examples" value="" onChange={() => {}} />);
+    expect(screen.getByLabelText('Examples').style.getPropertyValue('--field-rows')).toBe('2');
+    rerender(<FieldArea id="ex" label="Examples" rows={1} value="" onChange={() => {}} style={{ color: 'red' }} />);
+    const area = screen.getByLabelText('Examples');
+    expect(area).toHaveAttribute('rows', '1');
+    expect(area.style.getPropertyValue('--field-rows')).toBe('1');
+    expect(area.style.color).toBe('red');
+  });
+
   it('describes the field with its hint and its error', () => {
     const { rerender } = render(<FieldArea id="ex" label="Examples" hint="One per line." value="" onChange={() => {}} />);
     expect(screen.getByLabelText('Examples')).toHaveAccessibleDescription('One per line.');

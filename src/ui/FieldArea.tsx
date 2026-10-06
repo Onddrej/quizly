@@ -1,4 +1,4 @@
-import type { ComponentPropsWithRef } from 'react';
+import type { ComponentPropsWithRef, CSSProperties } from 'react';
 import styles from './FieldArea.module.css';
 
 interface FieldAreaProps extends ComponentPropsWithRef<'textarea'> {
@@ -9,7 +9,7 @@ interface FieldAreaProps extends ComponentPropsWithRef<'textarea'> {
 }
 
 /** Multi-line sibling of Field: same underline, label below, then an optional hint and error (both announced with the field). */
-export function FieldArea({ id, label, hint, error, className, rows = 2, ...textarea }: FieldAreaProps) {
+export function FieldArea({ id, label, hint, error, className, style, rows = 2, ...textarea }: FieldAreaProps) {
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy = [hint ? hintId : '', error ? errorId : ''].filter(Boolean).join(' ');
@@ -18,6 +18,7 @@ export function FieldArea({ id, label, hint, error, className, rows = 2, ...text
       <textarea
         id={id}
         rows={rows}
+        style={{ '--field-rows': rows, ...style } as CSSProperties}
         className={`${styles.input} ${error ? styles.invalid : ''} ${className ?? ''}`}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}

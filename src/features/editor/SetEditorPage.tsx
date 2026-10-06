@@ -62,14 +62,15 @@ function CardDetails({ row, onChange }: CardDetailsProps) {
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
       >
-        {!open && hasDetails(row) ? 'Edit definition and examples' : 'Add definition and examples'}
+        {open ? 'Hide definition and examples' : hasDetails(row) ? 'Edit definition and examples' : 'Add definition and examples'}
       </Button>
       <div id={panelId} className={styles.details} hidden={!open}>
         {open && (
           <>
-            <Field
+            <FieldArea
               id={`meaning-${row.key}`}
               label="Definition"
+              rows={1}
               value={row.meaning}
               lang="en"
               autoCapitalize="off"
