@@ -130,7 +130,7 @@ Kartičky (Flashcards) `stage` nemenia.
   1. Najprv rozpracované slovíčka (stage 1, 2 a 3), od najdlhšie nevidených (`lastAnsweredAt`).
   2. Potom nové (stage 0) v poradí setu.
 - **Poradie v kole:** slovíčka sa pýtajú v zamiešanom poradí.
-- **Chyby v kole:** slovíčko s chybou sa zaradí na koniec kola a spýta sa znova, najviac 2-krát za kolo.
+- **Chyby v kole:** slovíčko s chybou sa zaradí na koniec kola a spýta sa znova, kým ho používateľ nezodpovie správne (bez limitu počtu opakovaní). Po chybe sa stage vráti o jeden typ otázky späť (5.1), takže opakovanie je jednoduchšia forma (po chybe pri písaní najprv výber z možností). Kolo skončí, až keď je každé jeho slovíčko zodpovedané správne.
 - **Výber z možností:**
   - Zobrazí sa pojem (s reproduktorom) a 4 preklady: správny + 3 náhodné iné preklady z toho istého setu.
   - Duplicitné texty sa vylúčia.
@@ -142,6 +142,9 @@ Kartičky (Flashcards) `stage` nemenia.
 - **Spätná väzba:** panel zdola s výsledkom, pri chybe so správnou odpoveďou, tlačidlom „Continue" a reproduktorom pri anglickom slove.
   - Pri chybe v písaní (oboch smeroch) je tlačidlo „I was right", ktoré odpoveď uzná ako správnu (pre synonymá).
   - Pri chybe v písaní prekladu sa zobrazí celý preklad so všetkými variantmi a poznámka „Any one of these is enough."
+- **Opísanie správnej odpovede (retype):** po nesprávnej alebo preskočenej písanej odpovedi („Don't know?") sa správna odpoveď zobrazí a používateľ ju musí napísať, kým sa kolo posunie ďalej (pole „Type the answer to continue", Enter alebo „Continue"). Počíta sa len presná zhoda (veľkosť písmen a okrajová interpunkcia sa ignorujú, pri preklade stačí ktorýkoľvek variant); preklep sa neakceptuje, lebo text je na obrazovke. Tento krok sa nachádza v tele stránky (nie v spodnom paneli, ktorý by zakryla klávesnica) a obsahuje aj „I was right" (len pri nesprávnej, nie pri preskočenej odpovedi). Opísanie nemení stage; stage určuje chyba (5.1). Pri nesprávnom výbere z možností sa nič nepíše, slovíčko sa len vráti do kola.
+- **Tlačidlo „Don't know?":** pri písaných otázkach je v hlavičke karty so zadaním (vedľa nadpisu, nad poľom na odpoveď), takže ho otvorená klávesnica nezakryje. Pole a „Answer" sú pod kartou.
+- **Hint a detaily:** ak má slovíčko `meaning` alebo `examples`, v hlavičke karty je tlačidlo so žiarovkou („Show hint" / „Hide hint"), ktoré na požiadanie zobrazí definíciu a príklady; nič sa nezobrazuje automaticky pred odpoveďou. Keď je odpoveďou anglický pojem (písanie pojmu), pojem a jeho bežné tvary sa v hinte nahradia „_____" (best effort, nepravidelné tvary ako „came" ostávajú). Po odpovedi (správnej aj nesprávnej) sa pod otázkou zobrazí definícia a príklady slovíčka. Hint ani zobrazenie nemenia stage ani vyhodnotenie.
   - Enter = Continue.
 - **Koniec kola:**
   - „Round N done".
@@ -239,7 +242,7 @@ Revízia 2026-10-02. Odpovedná strana slovíčka má až tri časti; druhé dve
 - Chýbajúce časti sa nezobrazujú a nenechávajú prázdne miesto. Farby len cez tokeny.
 - V zozname slovíčok je pojem hlavný nadpis riadku a pod ním blok (preklad polotučne, menšie písmo); na kartičke je preklad tučne a veľký, definícia a príklady menšie pod ním, text je vycentrovaný a dlhý obsah sa v rámci kartičky posúva.
 
-**Kontrola odpovedí.** Learn aj kartičky pracujú len s prekladom: porovnáva sa vždy iba preklad, pri písaní stačí napísať ktorýkoľvek z prekladov oddelených čiarkou (5.4). `meaning` a `examples` sa pri kontrole nikdy nepoužívajú a v otázkach výberu z možností sa nezobrazujú (možnosti sú preklady).
+**Kontrola odpovedí.** Learn aj kartičky pracujú len s prekladom: porovnáva sa vždy iba preklad, pri písaní stačí napísať ktorýkoľvek z prekladov oddelených čiarkou (5.4). `meaning` a `examples` sa pri kontrole nikdy nepoužívajú. V Learn sa zobrazujú len na požiadanie (hint) a po odpovedi (5.2); možnosti vo výbere sú stále len preklady.
 
 **Zmeny textov v rozhraní.** „Definition" (názov poľa v editore, nadpis zadania v Learn) → „Translation"; „Add a definition" → „Add a translation"; „Choose the matching definition" → „Choose the matching translation"; „Type the definition in Slovak" → „Type the translation in Slovak" (jazyk podľa `definitionLang`); nápoveda pri hromadnom vložení: „Separate term and translation with a dash, tab or comma."
 
