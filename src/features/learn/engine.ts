@@ -5,7 +5,6 @@ import { defaultRng, shuffle, type Rng } from '../../lib/random';
 export type QuestionType = 'choice' | 'write-term' | 'write-definition';
 
 export const ROUND_SIZE = 7;
-export const MAX_RETRIES_PER_CARD = 2;
 
 export interface RoundState {
   cardIds: string[];
@@ -73,19 +72,18 @@ export function isRoundFinished(state: RoundState): boolean {
   return state.queue.length === 0;
 }
 
-/** Pure: returns the next state and the card's new stage; never mutates its input. Throws when the round is already finished. A card is asked at most 1 + MAX_RETRIES_PER_CARD times per round. */
+/** Pure: returns the next state and the card's new stage; never mutates its input. Throws when the round is already finished. A wrong card goes to the end of the queue and stays in the round until it is answered correctly. */
 export function answer(state: RoundState, correct: boolean): { state: RoundState; stage: Stage } {
   const id = state.queue[0];
   if (id === undefined) throw new Error('Round is already finished');
   const attempts = (state.attempts[id] ?? 0) + 1;
   const stage = stageAfter(state.stages[id], correct);
   const rest = state.queue.slice(1);
-  const retry = !correct && attempts <= MAX_RETRIES_PER_CARD;
   return {
     stage,
     state: {
       ...state,
-      queue: retry ? [...rest, id] : rest,
+      queue: correct ? rest : [...rest, id],
       attempts: { ...state.attempts, [id]: attempts },
       firstTry: id in state.firstTry ? state.firstTry : { ...state.firstTry, [id]: correct },
       stages: { ...state.stages, [id]: stage },

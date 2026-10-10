@@ -102,3 +102,10 @@
 .completeIcon { width: 72px; height: 72px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; background: var(--good-soft); color: var(--good); }
 .complete h2 { font-size: 26px; font-weight: 800; text-wrap: balance; }
 .complete p { max-width: 34ch; color: var(--ink-2); }
+
+.tools { display: inline-flex; align-items: center; gap: 2px; }
+.dontKnow { min-height: 40px; padding: 0 10px; font-size: 14px; }
+.hint { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
+.details { padding: 0 4px; }
+.copy { display: grid; gap: 14px; padding: 16px; }
+.copyError { font-size: 14px; font-weight: 600; color: var(--bad); }

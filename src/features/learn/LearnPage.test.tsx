@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import { renderRoute } from '../../test/render';
 import { resetDb } from '../../test/db';
 import { db } from '../../db/schema';
@@ -34,6 +35,19 @@ function shownDefinitionTerm(): keyof typeof pairs {
 const afterTapGuard = () => new Promise((resolve) => setTimeout(resolve, 400));
 
 const cardOf = async (term: string) => (await db.cards.filter((c) => c.term === term).first())!;
+
+/** The step after a wrong typed answer: the correct answer is shown and has to be typed before the round moves on. */
+const shownCorrectAnswer = () =>
+  within(screen.getByRole('region', { name: 'Correct answer' })).getByText((_, el) => el?.tagName === 'B').textContent!;
+
+async function typeCopy(user: UserEvent, text = shownCorrectAnswer()) {
+  await user.type(screen.getByLabelText('Type the answer to continue'), text);
+}
+
+async function copyAnswer(user: UserEvent) {
+  await typeCopy(user);
+  await user.click(screen.getByRole('button', { name: 'Continue' }));
+}
 
 beforeEach(resetDb);
 
@@ -106,7 +120,7 @@ describe('LearnPage', () => {
 });
 
 describe('LearnPage behavior', () => {
-  it('"Don\'t know?" shows the answer without an "I was right" button and saves the lower stage and the answer time', async () => {
+  it('"Don\'t know?" shows the answer without an "I was right" button and saves the lower stage and the answer time once it is typed', async () => {
     const id = await setWithStage(3);
     const before = Date.now();
     const { user } = renderRoute(`/sets/${id}/learn`);
@@ -115,7 +129,8 @@ describe('LearnPage behavior', () => {
     await user.click(screen.getByRole('button', { name: "Don't know?" }));
     expect(screen.getByText("Here's the answer")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'I was right' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect((await cardOf(term)).stage).toBe(3);
+    await copyAnswer(user);
     await waitFor(async () => expect((await cardOf(term)).stage).toBe(2));
     expect((await cardOf(term)).lastAnsweredAt).toBeGreaterThanOrEqual(before);
   });
@@ -197,7 +212,7 @@ describe('LearnPage behavior', () => {
       await user.type(screen.getByLabelText('Type the translation in Slovak'), 'nonsense');
       await user.click(screen.getByRole('button', { name: 'Answer' }));
       expect(screen.getByText('Incorrect')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await copyAnswer(user);
       expect(await screen.findByText("Couldn't save. Try again.")).toBeInTheDocument();
       expect(screen.getByText('Incorrect')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
@@ -318,7 +333,7 @@ describe('LearnPage edge cases', () => {
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: "Don't know?" }));
     expect(screen.getByText("Here's the answer")).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await copyAnswer(user);
     await waitFor(async () => expect((await db.cards.where('setId').equals(id).toArray()).some((c) => c.stage === 1)).toBe(true));
     // Continue saves asynchronously: wait until the old feedback is gone, so the input found next belongs to the next question.
     await waitFor(() => expect(screen.queryByText("Here's the answer")).not.toBeInTheDocument());
@@ -405,28 +420,173 @@ describe('LearnPage card details', () => {
     { term: 'departure', definition: 'odchod', meaning: 'the act of leaving a place', examples: 'The departure was delayed.' },
   ];
 
+  const DETAIL_TEXT = /bags that you carry|act of leaving|was lost|put your luggage|was delayed/i;
+
   async function detailedSet(stage: Stage) {
     const id = await createSet({ title: 'Details', definitionLang: 'sk', cards: detailed });
     await db.cards.where('setId').equals(id).modify({ stage });
     return id;
   }
 
-  it('never shows the definition or the examples of a card in multiple choice', async () => {
+  const shownDetailedCard = () => detailed.find((c) => c.term === screen.getByText(/^(luggage|departure)$/).textContent)!;
+
+  it('does not show the definition or the examples until the hint is asked for', async () => {
     const id = await detailedSet(0);
     renderRoute(`/sets/${id}/learn`);
     await screen.findByText('Choose the matching translation');
-    expect(document.body).not.toHaveTextContent(/bags that you carry|act of leaving|was lost|put your luggage|was delayed/i);
+    expect(document.body).not.toHaveTextContent(DETAIL_TEXT);
+    expect(screen.getByRole('button', { name: 'Show hint' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('does not accept the definition as the translation and does not reveal it afterwards', async () => {
+  it('shows the definition and the examples of the term in multiple choice when the hint is opened, and hides them again', async () => {
+    const id = await detailedSet(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const card = shownDetailedCard();
+    await user.click(screen.getByRole('button', { name: 'Show hint' }));
+    expect(screen.getByText(card.meaning)).toBeInTheDocument();
+    for (const line of card.examples.split('\n')) expect(screen.getByText(line)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide hint' })).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('button', { name: 'Hide hint' }));
+    expect(document.body).not.toHaveTextContent(DETAIL_TEXT);
+  });
+
+  it('blanks the term in the hint when the English term is the answer', async () => {
+    const id = await detailedSet(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the English term');
+    await user.click(screen.getByRole('button', { name: 'Show hint' }));
+    const hint = screen.getByRole('group', { name: 'Hint' });
+    expect(hint).toHaveTextContent('_____');
+    expect(hint).not.toHaveTextContent(/luggage|departure/i);
+  });
+
+  it('shows the English term unmasked in the hint when the translation is the answer', async () => {
+    const id = await detailedSet(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    await user.click(screen.getByRole('button', { name: 'Show hint' }));
+    expect(screen.getByRole('group', { name: 'Hint' })).not.toHaveTextContent('_____');
+  });
+
+  it('has no hint button for a card without a definition or examples', async () => {
+    const id = await setWithStage(0);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    expect(screen.queryByRole('button', { name: /hint/i })).not.toBeInTheDocument();
+  });
+
+  it('does not accept the definition as the translation, and shows it with the examples after the answer', async () => {
     const id = await detailedSet(3);
     const { user } = renderRoute(`/sets/${id}/learn`);
     const input = await screen.findByLabelText('Type the translation in Slovak');
-    const card = detailed.find((c) => c.term === screen.getByText(/^(luggage|departure)$/).textContent)!;
+    const card = shownDetailedCard();
     await user.type(input, card.meaning);
     await user.click(screen.getByRole('button', { name: 'Answer' }));
     expect(screen.getByText('Incorrect')).toBeInTheDocument();
-    expect(document.body).not.toHaveTextContent(/bags that you carry|act of leaving|was lost|put your luggage|was delayed/i);
+    expect(screen.getByText(card.meaning, { selector: 'p' })).toBeInTheDocument();
+    for (const line of card.examples.split('\n')) expect(screen.getByText(line)).toBeInTheDocument();
+  });
+
+  it('shows the definition and the examples after a correct answer too', async () => {
+    const id = await detailedSet(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    const input = await screen.findByLabelText('Type the translation in Slovak');
+    const card = shownDetailedCard();
+    expect(document.body).not.toHaveTextContent(DETAIL_TEXT);
+    await user.type(input, card.definition);
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.getByText(card.meaning)).toBeInTheDocument();
+  });
+
+  it('closes the hint for the next question', async () => {
+    const id = await detailedSet(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    await user.click(screen.getByRole('button', { name: 'Show hint' }));
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    await copyAnswer(user);
+    await waitFor(() => expect(screen.getByLabelText('Type the translation in Slovak')).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Show hint' })).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('LearnPage retyping a missed answer', () => {
+  it('shows the correct answer and does not move on until it is typed', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    const term = shownDefinitionTerm();
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Incorrect')).toBeInTheDocument();
+    expect(shownCorrectAnswer()).toBe(term);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Not quite');
+    await user.type(screen.getByLabelText('Type the answer to continue'), 'wrong again');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Not quite');
+    expect((await cardOf(term)).stage).toBe(2);
+
+    await user.clear(screen.getByLabelText('Type the answer to continue'));
+    await typeCopy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => expect((await cardOf(term)).stage).toBe(1));
+    await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
+  });
+
+  it('accepts the answer typed with Enter and ignores case', async () => {
+    const id = await setWithStage(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const term = shownTerm();
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    await user.type(screen.getByLabelText('Type the answer to continue'), `${shownCorrectAnswer().toUpperCase()}{Enter}`);
+    await waitFor(async () => expect((await cardOf(term)).stage).toBe(2));
+  });
+
+  it('does not accept a typo: the answer is on screen, so it has to be copied exactly', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    const answer = shownCorrectAnswer();
+    await user.type(screen.getByLabelText('Type the answer to continue'), `${answer.slice(0, -1)}x{Enter}`);
+    expect(screen.getByRole('alert')).toHaveTextContent('Not quite');
+    expect(screen.getByLabelText('Type the answer to continue')).toBeInTheDocument();
+  });
+
+  it('puts "Don\'t know?" ahead of the answer field, so the keyboard never covers it', async () => {
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    const input = await screen.findByLabelText('Type the English term');
+    const dontKnow = screen.getByRole('button', { name: "Don't know?" });
+    expect(dontKnow.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('brings a missed card back as often as it takes: it is asked again until it is right', async () => {
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const first = shownTerm();
+    const other = first === 'luggage' ? 'departure' : 'luggage';
+    const missFirst = async () => {
+      await user.click(screen.getByRole('button', { name: pairs[other] }));
+      expect(screen.getByText('Not quite')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+    };
+    await missFirst();
+    await waitFor(() => expect(shownTerm()).toBe(other));
+    await user.click(screen.getByRole('button', { name: pairs[other] }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    for (let i = 0; i < 3; i++) {
+      await waitFor(() => expect(shownTerm()).toBe(first));
+      await waitFor(() => expect(screen.queryByText('Not quite')).not.toBeInTheDocument());
+      await missFirst();
+    }
+    await waitFor(() => expect(shownTerm()).toBe(first));
+    await user.click(screen.getByRole('button', { name: pairs[first] }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
   });
 });
 

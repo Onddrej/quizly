@@ -10,7 +10,9 @@ import { NotFound } from '../../app/NotFound';
 import { countStatuses } from '../../lib/progress';
 import { languageName } from '../../lib/languages';
 import { splitVariants } from '../../lib/text';
+import { splitExamples } from '../../lib/cardDetails';
 import { defaultRng } from '../../lib/random';
+import { CardBack } from '../../ui/CardBack';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
@@ -18,7 +20,6 @@ import { StageBar } from '../../ui/StageBar';
 import { useToast } from '../../ui/Toast';
 import { checkAnswer, type AnswerVerdict } from './answerCheck';
 import {
-  MAX_RETRIES_PER_CARD,
   answer,
   currentCardId,
   isRoundFinished,
@@ -31,7 +32,10 @@ import {
   type RoundState,
   type RoundSummary as Summary,
 } from './engine';
+import { maskTerm } from './hint';
+import { CopyAnswer } from './CopyAnswer';
 import { MultipleChoice } from './MultipleChoice';
+import type { HintContent } from './PromptCard';
 import { WrittenQuestion } from './WrittenQuestion';
 import { Feedback } from './Feedback';
 import { RoundSummary } from './RoundSummary';
@@ -60,8 +64,23 @@ interface FeedbackCopy {
   canOverrule: boolean;
 }
 
-function describeFeedback(p: Pending, card: Card, langName: string, retry: boolean, stage: Stage): FeedbackCopy {
-  const again = retry ? "You'll see it again this round." : "You'll see it again in a later round.";
+/** A missed card stays in the round until it is answered correctly, so a miss always comes back in this round. */
+const AGAIN = "You'll see it again this round.";
+
+/** The definition and examples a hint may show; the term is blanked when it is the answer. Null when the card has neither. */
+function hintFor(card: Card, maskAnswer: boolean): HintContent | null {
+  const meaning = card.meaning?.trim();
+  const examples = splitExamples(card.examples);
+  if (!meaning && examples.length === 0) return null;
+  const clean = (text: string) => (maskAnswer ? maskTerm(text, card.term) : text);
+  return {
+    ...(meaning ? { meaning: clean(meaning) } : {}),
+    ...(examples.length > 0 ? { examples: examples.map(clean).join('\n') } : {}),
+  };
+}
+
+function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage): FeedbackCopy {
+  const again = AGAIN;
   const next: Record<QuestionType, string> = {
     choice: "Next time you'll type the English term.",
     // A card still at the multiple choice stage can be asked as a typed question (see `type` below): it then goes to stage 2.
@@ -240,15 +259,24 @@ export function LearnPage() {
   if (!round || !current || !type) return null;
 
   const pending = phase.kind === 'feedback' ? phase.pending : null;
-  const retry = pending ? !pending.correct && (round.attempts[current.id] ?? 0) + 1 <= MAX_RETRIES_PER_CARD : false;
-  const copy = pending ? describeFeedback(pending, current, langName, retry, round.stages[current.id]) : null;
+  const copy = pending ? describeFeedback(pending, current, langName, round.stages[current.id]) : null;
+  // A missed typed answer has to be typed again before the round moves on (shown in the page body, not the bottom panel:
+  // a phone keyboard would cover the panel). Multiple choice misses and "I was right" use the panel as before.
+  const needsCopy = pending !== null && !pending.correct && (pending.type === 'write-term' || pending.type === 'write-definition');
+  const hint = hintFor(current, type === 'write-term');
+  const details = pending && (current.meaning?.trim() || current.examples?.trim()) ? (
+    <div className={styles.details}>
+      <CardBack card={current} lang="en" showTranslation={false} />
+    </div>
+  ) : null;
 
   return (
     <Page
       top={<TopBar left={<IconButton label="Close" icon={<X size={20} />} onClick={leave} />} title={`Round ${roundNumber}`} />}
       bottom={
         pending &&
-        copy && (
+        copy &&
+        !needsCopy && (
           <Feedback
             correct={pending.correct}
             title={copy.title}
@@ -273,7 +301,7 @@ export function LearnPage() {
         </span>
       </div>
       {type === 'choice' ? (
-        <MultipleChoice key={questionKey} term={current.term} choices={choices} correct={current.definition} locked={pending !== null} onPick={submitChoice} />
+        <MultipleChoice key={questionKey} term={current.term} choices={choices} correct={current.definition} hint={hint} locked={pending !== null} onPick={submitChoice} />
       ) : (
         <WrittenQuestion
           key={questionKey}
@@ -282,11 +310,28 @@ export function LearnPage() {
           promptLang={type === 'write-term' ? set.definitionLang : 'en'}
           speak={type === 'write-definition' ? current.term : undefined}
           instruction={type === 'write-term' ? 'Type the English term' : `Type the translation in ${langName}`}
+          hint={hint}
           locked={pending !== null}
           result={pending ? (pending.correct ? 'ok' : 'no') : null}
           onSubmit={submitWritten}
           onDontKnow={dontKnow}
         />
+      )}
+      {needsCopy && pending && copy ? (
+        <CopyAnswer
+          key={`copy:${questionKey}`}
+          title={copy.title}
+          expected={pending.type === 'write-term' ? current.term : current.definition}
+          language={pending.type === 'write-term' ? 'english' : 'other'}
+          speak={copy.speak}
+          details={details}
+          onMatch={() => void next()}
+          onOverrule={copy.canOverrule ? overrule : undefined}
+        >
+          {copy.body}
+        </CopyAnswer>
+      ) : (
+        details
       )}
     </Page>
   );

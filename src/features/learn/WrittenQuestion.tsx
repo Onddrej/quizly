@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../ui/Button';
-import { SpeakButton } from '../../ui/SpeakButton';
+import { PromptCard, type HintContent } from './PromptCard';
 import styles from './Learn.module.css';
 
 interface WrittenQuestionProps {
@@ -9,13 +9,14 @@ interface WrittenQuestionProps {
   promptLang: string;
   speak?: string;
   instruction: string;
+  hint: HintContent | null;
   locked: boolean;
   result: 'ok' | 'no' | null;
   onSubmit: (answer: string) => void;
   onDontKnow: () => void;
 }
 
-export function WrittenQuestion({ label, prompt, promptLang, speak, instruction, locked, result, onSubmit, onDontKnow }: WrittenQuestionProps) {
+export function WrittenQuestion({ label, prompt, promptLang, speak, instruction, hint, locked, result, onSubmit, onDontKnow }: WrittenQuestionProps) {
   const [value, setValue] = useState('');
   const input = useRef<HTMLInputElement>(null);
 
@@ -26,15 +27,7 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
   const resultClass = result === 'ok' ? styles.inputOk : result === 'no' ? styles.inputNo : '';
   return (
     <>
-      <div className={`card ${styles.prompt}`}>
-        <div className={styles.promptLabel}>
-          <span>{label}</span>
-          {speak && <SpeakButton text={speak} />}
-        </div>
-        <p className={styles.word} lang={promptLang}>
-          {prompt}
-        </p>
-      </div>
+      <PromptCard label={label} word={prompt} lang={promptLang} speak={speak} hint={hint} onDontKnow={onDontKnow} locked={locked} />
       <form
         className={styles.answer}
         autoComplete="off"
@@ -63,14 +56,9 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
           className={`${styles.input} ${resultClass}`}
           onChange={(e) => setValue(e.target.value)}
         />
-        <div className={styles.answerActions}>
-          <Button variant="ghost" onClick={onDontKnow} disabled={locked}>
-            Don't know?
-          </Button>
-          <Button type="submit" disabled={locked}>
-            Answer
-          </Button>
-        </div>
+        <Button type="submit" block disabled={locked}>
+          Answer
+        </Button>
       </form>
     </>
   );

@@ -150,3 +150,17 @@ describe('CardBack variants', () => {
     expect((row.container.firstElementChild as HTMLElement).className).toBe(implicitClass);
   });
 });
+
+describe('CardBack without the translation', () => {
+  it('shows only the definition and the examples', () => {
+    render(<CardBack card={{ definition: 'odchod', meaning: 'the act of leaving', examples: 'He left.' }} showTranslation={false} />);
+    expect(screen.queryByText('odchod')).not.toBeInTheDocument();
+    expect(screen.getByText('the act of leaving')).toBeInTheDocument();
+    expect(screen.getByText('He left.')).toBeInTheDocument();
+  });
+
+  it('renders no text element when there is nothing else to show', () => {
+    const { container } = render(<CardBack card={{ definition: 'odchod' }} showTranslation={false} />);
+    expect((container.firstElementChild as HTMLElement).children).toHaveLength(0);
+  });
+});

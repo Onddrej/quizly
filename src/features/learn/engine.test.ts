@@ -109,13 +109,15 @@ describe('answer', () => {
     expect(state.firstTry).toEqual({ a: false });
   });
 
-  it('asks one card at most 3 times per round', () => {
+  it('keeps a card in the round until it is answered correctly, however many mistakes come first', () => {
     let state: RoundState = { ...base(), cardIds: ['a'], queue: ['a'] };
-    state = answer(state, false).state;
-    expect(state.queue).toEqual(['a']);
-    state = answer(state, false).state;
-    expect(state.queue).toEqual(['a']);
-    state = answer(state, false).state;
+    for (let i = 0; i < 10; i++) {
+      state = answer(state, false).state;
+      expect(state.queue).toEqual(['a']);
+      expect(isRoundFinished(state)).toBe(false);
+    }
+    expect(state.attempts.a).toBe(10);
+    state = answer(state, true).state;
     expect(state.queue).toEqual([]);
     expect(isRoundFinished(state)).toBe(true);
   });
@@ -276,14 +278,16 @@ describe('answer, currentCardId and isRoundFinished (extra)', () => {
     expect(isRoundFinished(result.state)).toBe(true);
   });
 
-  it('counts the retries of each card separately', () => {
+  it('counts the attempts of each card separately and asks the cards in turn until both are right', () => {
     let state: RoundState = { cardIds: ['a', 'b'], queue: ['a', 'b'], attempts: {}, firstTry: {}, stages: { a: 0, b: 0 }, startStages: { a: 0, b: 0 } };
     const asked: string[] = [];
-    while (!isRoundFinished(state)) {
+    for (const correct of [false, false, false, true, true]) {
       asked.push(currentCardId(state)!);
-      state = answer(state, false).state;
+      state = answer(state, correct).state;
     }
-    expect(asked).toEqual(['a', 'b', 'a', 'b', 'a', 'b']);
+    expect(asked).toEqual(['a', 'b', 'a', 'b', 'a']);
+    expect(state.attempts).toEqual({ a: 3, b: 2 });
+    expect(isRoundFinished(state)).toBe(true);
   });
 
   it('currentCardId follows the head of the queue and isRoundFinished only turns true at the end', () => {

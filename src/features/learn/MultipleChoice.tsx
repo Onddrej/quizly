@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
-import { SpeakButton } from '../../ui/SpeakButton';
+import { PromptCard, type HintContent } from './PromptCard';
 import styles from './Learn.module.css';
 
 interface MultipleChoiceProps {
   term: string;
   choices: string[];
   correct: string;
+  hint: HintContent | null;
   locked: boolean;
   onPick: (choice: string) => void;
 }
 
-export function MultipleChoice({ term, choices, correct, locked, onPick }: MultipleChoiceProps) {
+export function MultipleChoice({ term, choices, correct, hint, locked, onPick }: MultipleChoiceProps) {
   const [picked, setPicked] = useState<string | null>(null);
   const optionRefs = useRef(new Map<string, HTMLButtonElement>());
 
@@ -25,15 +26,7 @@ export function MultipleChoice({ term, choices, correct, locked, onPick }: Multi
 
   return (
     <>
-      <div className={`card ${styles.prompt}`}>
-        <div className={styles.promptLabel}>
-          <span>Term</span>
-          <SpeakButton text={term} />
-        </div>
-        <p className={styles.word} lang="en">
-          {term}
-        </p>
-      </div>
+      <PromptCard label="Term" word={term} lang="en" speak={term} hint={hint} />
       <p className={styles.ask} id="choice-question">
         Choose the matching translation
       </p>

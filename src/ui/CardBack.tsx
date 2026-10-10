@@ -8,6 +8,8 @@ interface CardBackProps {
   lang?: string;
   /** `row` for list rows, `face` for the large centered flashcard side. */
   variant?: 'row' | 'face';
+  /** Set to false where the translation is already on screen and only the definition and examples are wanted. */
+  showTranslation?: boolean;
 }
 
 /**
@@ -15,15 +17,17 @@ interface CardBackProps {
  * definition and the optional example sentences (italic, one per line).
  * Blank or missing parts render nothing, so they never leave a gap.
  */
-export function CardBack({ card, lang, variant = 'row' }: CardBackProps) {
+export function CardBack({ card, lang, variant = 'row', showTranslation = true }: CardBackProps) {
   const meaning = card.meaning?.trim();
   const examples = splitExamples(card.examples);
 
   return (
     <div className={`${styles.wrap} ${styles[variant]}`}>
-      <p className={styles.translation} lang={lang}>
-        {card.definition}
-      </p>
+      {showTranslation && (
+        <p className={styles.translation} lang={lang}>
+          {card.definition}
+        </p>
+      )}
       {meaning && (
         <p className={styles.meaning} lang="en">
           {meaning}
