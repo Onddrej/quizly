@@ -14,6 +14,8 @@ interface CopyAnswerProps {
   language: AnswerLanguage;
   /** English text the speaker reads (the term). */
   speak?: string;
+  /** What was typed (a wrong answer), shown so it can be compared with the correct one; absent after "Don't know?". */
+  written?: string;
   /** Definition and examples of the card, shown while the answer is being copied. */
   details?: ReactNode;
   onMatch: () => void;
@@ -28,7 +30,7 @@ interface CopyAnswerProps {
  * Everything the user may need to press is at or above the field: Chrome puts an autofill bar between the field and the
  * keyboard, and it covers whatever sits below the field.
  */
-export function CopyAnswer({ title, children, expected, language, speak, details, onMatch, onOverrule }: CopyAnswerProps) {
+export function CopyAnswer({ title, children, expected, language, speak, written, details, onMatch, onOverrule }: CopyAnswerProps) {
   const [value, setValue] = useState('');
   const [wrong, setWrong] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -49,6 +51,12 @@ export function CopyAnswer({ title, children, expected, language, speak, details
         </div>
         {speak && <SpeakButton text={speak} />}
       </div>
+      {written && (
+        <p className={styles.picked}>
+          <X size={16} aria-hidden="true" />
+          <span>You wrote {written}</span>
+        </p>
+      )}
       {details}
       {onOverrule && (
         <Button variant="ghost" className={styles.overrule} onClick={onOverrule}>

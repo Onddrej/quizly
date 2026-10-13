@@ -8,7 +8,7 @@ interface PromptCardProps {
   lang: string;
   /** English text the speaker reads (the term). */
   speak?: string;
-  /** Written questions: "Don't know?" sits in this header, above the answer field, so a phone keyboard never covers it. */
+  /** Written questions: "Don't know?" sits in this header, above the answer field, so a phone keyboard never covers it. Gone once the question is answered (`locked`). */
   onDontKnow?: () => void;
   locked?: boolean;
 }
@@ -20,8 +20,8 @@ export function PromptCard({ label, word, lang, speak, onDontKnow, locked = fals
       <div className={styles.promptLabel}>
         <span>{label}</span>
         <span className={styles.tools}>
-          {onDontKnow && (
-            <Button variant="ghost" className={styles.dontKnow} onClick={onDontKnow} disabled={locked}>
+          {onDontKnow && !locked && (
+            <Button variant="ghost" className={styles.dontKnow} onClick={onDontKnow}>
               Don't know?
             </Button>
           )}

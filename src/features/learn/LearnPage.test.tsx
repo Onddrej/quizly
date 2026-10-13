@@ -817,3 +817,44 @@ describe('LearnPage answer sounds', () => {
     expect(notes).toEqual([]);
   });
 });
+
+describe('LearnPage one field at a time', () => {
+  it('replaces the answer field with the retype field after a wrong answer, and shows what was written', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getByLabelText('Type the answer to continue')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Type the English term')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Answer' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Correct answer' })).toHaveTextContent('You wrote baggage');
+  });
+
+  it('does not claim anything was written after "Don\'t know?"', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getByRole('region', { name: 'Correct answer' })).not.toHaveTextContent('You wrote');
+  });
+
+  it('removes "Don\'t know?" once the question is answered', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), shownDefinitionTerm());
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Don't know?" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('shows the next question with its own single field after the retype', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    await copyAnswer(user);
+    await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+});

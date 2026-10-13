@@ -316,6 +316,7 @@ export function LearnPage() {
           speak={type === 'write-definition' ? current.term : undefined}
           instruction={type === 'write-term' ? 'Type the English term' : `Type the translation in ${langName}`}
           locked={pending !== null}
+          retype={needsCopy}
           result={pending ? (pending.correct ? 'ok' : 'no') : null}
           onSubmit={submitWritten}
           onDontKnow={dontKnow}
@@ -328,6 +329,7 @@ export function LearnPage() {
           expected={pending.type === 'write-term' ? current.term : current.definition}
           language={pending.type === 'write-term' ? 'english' : 'other'}
           speak={copy.speak}
+          written={pending.outcome === 'wrong' ? pending.given : undefined}
           details={details}
           onMatch={() => void next()}
           onOverrule={copy.canOverrule ? overrule : undefined}
