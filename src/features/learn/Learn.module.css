@@ -106,10 +106,22 @@
 .tools { display: inline-flex; align-items: center; gap: 2px; }
 .dontKnow { min-height: 40px; padding: 0 10px; font-size: 14px; }
 .hint { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
-.details { padding: 0 4px; }
+.details { display: grid; gap: 4px; padding: 0 4px; }
 .copy { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
 .copyError { font-size: 14px; font-weight: 600; color: var(--bad); }
 .inputRow { display: flex; gap: 8px; align-items: stretch; }
 /* width 0 + flex-grow: the field's intrinsic width must not count as the row's minimum, or the row overflows a narrow card */
 .inputRow .input { flex: 1 1 0; width: 0; min-width: 0; }
 .overrule { justify-self: start; }
+
+.answerCard { display: grid; gap: 6px; padding: 18px; }
+.answerWord { font-size: 30px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.answerTranslation { display: flex; align-items: flex-start; gap: 8px; font-size: 19px; font-weight: 700; color: var(--good); overflow-wrap: anywhere; }
+.answerTranslation svg { flex: none; margin-top: 3px; }
+.picked { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 600; color: var(--bad); overflow-wrap: anywhere; }
+.picked svg { flex: none; margin-top: 2px; }
+.detailLabel { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.detailMeaning { font-size: 16px; line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
+.detailExamples { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.detailExamples li { padding-left: 10px; border-left: 3px solid var(--accent); font-size: 15px; font-style: italic; line-height: 1.4; color: var(--ink-2); overflow-wrap: anywhere; }
+.hl { background: none; color: var(--accent-ink); font-style: normal; font-weight: 700; }

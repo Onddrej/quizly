@@ -146,8 +146,7 @@ Kartičky (Flashcards) `stage` nemenia.
 - **Tlačidlo „Don't know?":** pri písaných otázkach je v hlavičke karty so zadaním (vedľa nadpisu, nad poľom na odpoveď), takže ho otvorená klávesnica nezakryje. Pole a „Answer" sú pod kartou.
 - **Automatické čítanie:** keď sa anglický pojem zobrazí ako otázka (výber z možností, písanie prekladu), prečíta sa nahlas s vybraným prízvukom (`learnAutoplay`, predvolene zapnuté, vypína sa v Settings → Learn; vyžaduje anglický hlas v zariadení). Pri písaní anglického pojmu sa neprehráva, aby neprezradilo odpoveď. Nové otázky aj opakovaná otázka po chybe sa prečítajú znova; spätná väzba nie.
 - **Zvuky odpovedí:** pri vyhodnotení odpovede sa prehrá krátky tichý zvuk: dve stúpajúce noty pre správnu (aj s preklepom alebo „I was right"), jedna krátka nízka nota pre nesprávnu. Generuje sa cez Web Audio (bez súborov, funguje offline), vypína sa v Settings → Learn (`learnSounds`, predvolene zapnuté).
-- **Hint a detaily:** ak má slovíčko `meaning` alebo `examples`, v hlavičke karty je tlačidlo so žiarovkou („Show hint" / „Hide hint"), ktoré na požiadanie zobrazí definíciu a príklady; nič sa nezobrazuje automaticky pred odpoveďou. Keď je odpoveďou anglický pojem (písanie pojmu), pojem a jeho bežné tvary sa v hinte nahradia „_____" (best effort, nepravidelné tvary ako „came" ostávajú). Po odpovedi (správnej aj nesprávnej) sa pod otázkou zobrazí definícia a príklady slovíčka. Hint ani zobrazenie nemenia stage ani vyhodnotenie.
-  - Enter = Continue.
+- **Definícia a príklady po odpovedi:** kým sa slovíčko hádá, nezobrazujú sa (pomáhali by); žiadny hint. Po odpovedi (správnej aj nesprávnej) sa ukážu: pri výbere z možností sa otázka s možnosťami nahradí **kartou odpovede** (pojem s reproduktorom, správny preklad zelenou, pri nesprávnom výbere riadok „You chose …", potom Definition a Example/Examples, pojem a jeho bežné tvary sú v texte zvýraznené); pri písaní sú Definition a Examples pod poľom, pri chybe v kroku s opísaním. Chýbajúce časti sa nezobrazujú. Nemení to stage ani vyhodnotenie.
 - **Koniec kola:**
   - „Round N done".
   - „X of Y correct" (správne na prvý pokus).
@@ -244,7 +243,7 @@ Revízia 2026-10-02. Odpovedná strana slovíčka má až tri časti; druhé dve
 - Chýbajúce časti sa nezobrazujú a nenechávajú prázdne miesto. Farby len cez tokeny.
 - V zozname slovíčok je pojem hlavný nadpis riadku a pod ním blok (preklad polotučne, menšie písmo); na kartičke je preklad tučne a veľký, definícia a príklady menšie pod ním, text je vycentrovaný a dlhý obsah sa v rámci kartičky posúva.
 
-**Kontrola odpovedí.** Learn aj kartičky pracujú len s prekladom: porovnáva sa vždy iba preklad, pri písaní stačí napísať ktorýkoľvek z prekladov oddelených čiarkou (5.4). `meaning` a `examples` sa pri kontrole nikdy nepoužívajú. V Learn sa zobrazujú len na požiadanie (hint) a po odpovedi (5.2); možnosti vo výbere sú stále len preklady.
+**Kontrola odpovedí.** Learn aj kartičky pracujú len s prekladom: porovnáva sa vždy iba preklad, pri písaní stačí napísať ktorýkoľvek z prekladov oddelených čiarkou (5.4). `meaning` a `examples` sa pri kontrole nikdy nepoužívajú. V Learn sa zobrazujú až po odpovedi (5.2), nikdy počas hádania; možnosti vo výbere sú stále len preklady.
 
 **Zmeny textov v rozhraní.** „Definition" (názov poľa v editore, nadpis zadania v Learn) → „Translation"; „Add a definition" → „Add a translation"; „Choose the matching definition" → „Choose the matching translation"; „Type the definition in Slovak" → „Type the translation in Slovak" (jazyk podľa `definitionLang`); nápoveda pri hromadnom vložení: „Separate term and translation with a dash, tab or comma."
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../ui/Button';
-import { PromptCard, type HintContent } from './PromptCard';
+import { PromptCard } from './PromptCard';
 import styles from './Learn.module.css';
 
 interface WrittenQuestionProps {
@@ -9,14 +9,13 @@ interface WrittenQuestionProps {
   promptLang: string;
   speak?: string;
   instruction: string;
-  hint: HintContent | null;
   locked: boolean;
   result: 'ok' | 'no' | null;
   onSubmit: (answer: string) => void;
   onDontKnow: () => void;
 }
 
-export function WrittenQuestion({ label, prompt, promptLang, speak, instruction, hint, locked, result, onSubmit, onDontKnow }: WrittenQuestionProps) {
+export function WrittenQuestion({ label, prompt, promptLang, speak, instruction, locked, result, onSubmit, onDontKnow }: WrittenQuestionProps) {
   const [value, setValue] = useState('');
   const input = useRef<HTMLInputElement>(null);
 
@@ -27,7 +26,7 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
   const resultClass = result === 'ok' ? styles.inputOk : result === 'no' ? styles.inputNo : '';
   return (
     <>
-      <PromptCard label={label} word={prompt} lang={promptLang} speak={speak} hint={hint} onDontKnow={onDontKnow} locked={locked} />
+      <PromptCard label={label} word={prompt} lang={promptLang} speak={speak} onDontKnow={onDontKnow} locked={locked} />
       <form
         className={styles.answer}
         autoComplete="off"

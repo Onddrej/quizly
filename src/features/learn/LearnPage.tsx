@@ -11,11 +11,9 @@ import { useSettings } from '../../app/SettingsContext';
 import { countStatuses } from '../../lib/progress';
 import { languageName } from '../../lib/languages';
 import { splitVariants } from '../../lib/text';
-import { splitExamples } from '../../lib/cardDetails';
 import { defaultRng } from '../../lib/random';
 import { playCorrect, playWrong } from '../../lib/sounds';
 import { useSpeech } from '../../lib/useSpeech';
-import { CardBack } from '../../ui/CardBack';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
@@ -35,10 +33,10 @@ import {
   type RoundState,
   type RoundSummary as Summary,
 } from './engine';
-import { maskTerm } from './hint';
+import { AnswerCard } from './AnswerCard';
+import { AnswerDetails } from './AnswerDetails';
 import { CopyAnswer } from './CopyAnswer';
 import { MultipleChoice } from './MultipleChoice';
-import type { HintContent } from './PromptCard';
 import { WrittenQuestion } from './WrittenQuestion';
 import { Feedback } from './Feedback';
 import { RoundSummary } from './RoundSummary';
@@ -69,18 +67,6 @@ interface FeedbackCopy {
 
 /** A missed card stays in the round until it is answered correctly, so a miss always comes back in this round. */
 const AGAIN = "You'll see it again this round.";
-
-/** The definition and examples a hint may show; the term is blanked when it is the answer. Null when the card has neither. */
-function hintFor(card: Card, maskAnswer: boolean): HintContent | null {
-  const meaning = card.meaning?.trim();
-  const examples = splitExamples(card.examples);
-  if (!meaning && examples.length === 0) return null;
-  const clean = (text: string) => (maskAnswer ? maskTerm(text, card.term) : text);
-  return {
-    ...(meaning ? { meaning: clean(meaning) } : {}),
-    ...(examples.length > 0 ? { examples: examples.map(clean).join('\n') } : {}),
-  };
-}
 
 function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage): FeedbackCopy {
   const again = AGAIN;
@@ -284,12 +270,8 @@ export function LearnPage() {
   // A missed typed answer has to be typed again before the round moves on (shown in the page body, not the bottom panel:
   // a phone keyboard would cover the panel). Multiple choice misses and "I was right" use the panel as before.
   const needsCopy = pending !== null && !pending.correct && (pending.type === 'write-term' || pending.type === 'write-definition');
-  const hint = hintFor(current, type === 'write-term');
-  const details = pending && (current.meaning?.trim() || current.examples?.trim()) ? (
-    <div className={styles.details}>
-      <CardBack card={current} lang="en" showTranslation={false} />
-    </div>
-  ) : null;
+  // The definition and examples come only after the answer (they would help while guessing).
+  const details = pending ? <AnswerDetails term={current.term} meaning={current.meaning} examples={current.examples} /> : null;
 
   return (
     <Page
@@ -321,8 +303,10 @@ export function LearnPage() {
           <span className="visually-hidden"> terms</span>
         </span>
       </div>
-      {type === 'choice' ? (
-        <MultipleChoice key={questionKey} term={current.term} choices={choices} correct={current.definition} hint={hint} locked={pending !== null} onPick={submitChoice} />
+      {type === 'choice' && pending ? (
+        <AnswerCard key={`answer:${questionKey}`} card={current} lang={set.definitionLang} picked={pending.correct ? undefined : pending.given} />
+      ) : type === 'choice' ? (
+        <MultipleChoice key={questionKey} term={current.term} choices={choices} locked={false} onPick={submitChoice} />
       ) : (
         <WrittenQuestion
           key={questionKey}
@@ -331,7 +315,6 @@ export function LearnPage() {
           promptLang={type === 'write-term' ? set.definitionLang : 'en'}
           speak={type === 'write-definition' ? current.term : undefined}
           instruction={type === 'write-term' ? 'Type the English term' : `Type the translation in ${langName}`}
-          hint={hint}
           locked={pending !== null}
           result={pending ? (pending.correct ? 'ok' : 'no') : null}
           onSubmit={submitWritten}
@@ -351,7 +334,7 @@ export function LearnPage() {
         >
           {copy.body}
         </CopyAnswer>
-      ) : (
+      ) : type === 'choice' ? null : (
         details
       )}
     </Page>
