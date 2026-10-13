@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { renderRoute } from '../../test/render';
@@ -7,6 +7,8 @@ import { db } from '../../db/schema';
 import { createSet } from '../../db/sets';
 import type { Stage } from '../../db/types';
 import { collectUnhandledRejections } from '../../test/unhandled';
+import { saveSetting } from '../../db/settings';
+import { resetSoundsForTests } from '../../lib/sounds';
 
 const pairs = { luggage: 'batožina', departure: 'odchod, odlet' } as const;
 const typos: Record<string, string> = { luggage: 'lugage', departure: 'departre' };
@@ -652,5 +654,184 @@ describe('LearnPage with the phone keyboard and its autofill bar', () => {
     expect(above(screen.getByRole('button', { name: 'I was right' }))).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(above(screen.getByRole('alert'))).toBeTruthy();
+  });
+});
+
+describe('LearnPage automatic pronunciation', () => {
+  class FakeUtterance {
+    text: string;
+    lang = '';
+    rate = 1;
+    voice: unknown = null;
+    constructor(text: string) {
+      this.text = text;
+    }
+  }
+  const stubSpeech = (langs: string[] = ['en-US']) => {
+    const synth = {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      getVoices: () => langs.map((lang) => ({ lang, name: lang, localService: true })),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal('speechSynthesis', synth);
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
+    return synth;
+  };
+  const spoken = (synth: ReturnType<typeof stubSpeech>) => synth.speak.mock.calls.map((c) => (c[0] as FakeUtterance).text);
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reads the term aloud when a multiple choice question appears, once, and not again for the feedback', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const term = shownTerm();
+    await waitFor(() => expect(spoken(synth)).toEqual([term]));
+    await user.click(screen.getByRole('button', { name: pairs[term] }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(spoken(synth)).toEqual([term]);
+  });
+
+  it('reads the next term when the next question appears', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const first = shownTerm();
+    await waitFor(() => expect(spoken(synth)).toEqual([first]));
+    await user.click(screen.getByRole('button', { name: pairs[first] }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(shownTerm()).not.toBe(first));
+    await waitFor(() => expect(spoken(synth)).toEqual([first, shownTerm()]));
+  });
+
+  it('reads the term aloud when it is shown for typing the translation, with the chosen accent', async () => {
+    const synth = stubSpeech(['en-US', 'en-GB']);
+    const id = await setWithStage(3);
+    await saveSetting('accent', 'en-GB');
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const term = shownTerm();
+    await waitFor(() => expect(spoken(synth)).toEqual([term]));
+    expect((synth.speak.mock.calls[0][0] as FakeUtterance).lang).toBe('en-GB');
+  });
+
+  it('does not read the term when the English term is the answer', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the English term');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+
+  it('stays silent when automatic reading is switched off', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(0);
+    await saveSetting('learnAutoplay', false);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+
+  it('stays silent on a device without an English voice', async () => {
+    const synth = stubSpeech(['sk-SK']);
+    const id = await setWithStage(0);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+});
+
+describe('LearnPage answer sounds', () => {
+  /** Records the frequency of every note that starts. */
+  function stubAudio() {
+    const frequencies: number[] = [];
+    class FakeAudioContext {
+      state = 'running';
+      currentTime = 0;
+      destination = {};
+      resume = async () => undefined;
+      createGain() {
+        return { gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} };
+      }
+      createOscillator() {
+        const osc = {
+          type: '',
+          frequency: { value: 0 },
+          connect() {},
+          start() {
+            frequencies.push(osc.frequency.value);
+          },
+          stop() {},
+        };
+        return osc;
+      }
+    }
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    return frequencies;
+  }
+
+  beforeEach(() => resetSoundsForTests());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('plays the rising two-note sound for a correct answer', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    expect(notes).toEqual([]);
+    await user.click(screen.getByRole('button', { name: pairs[shownTerm()] }));
+    await waitFor(() => expect(notes).toHaveLength(2));
+    expect(notes[1]).toBeGreaterThan(notes[0]);
+  });
+
+  it('plays one low note for a wrong answer', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(0);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    const wrong = pairs[shownTerm() === 'luggage' ? 'departure' : 'luggage'];
+    await user.click(screen.getByRole('button', { name: wrong }));
+    await waitFor(() => expect(notes).toHaveLength(1));
+    expect(notes[0]).toBeLessThan(400);
+  });
+
+  it('treats a small typo as correct', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), typos[shownDefinitionTerm()]);
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await waitFor(() => expect(notes).toHaveLength(2));
+  });
+
+  it('a missed typed answer sounds wrong, and "I was right" then sounds right', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await waitFor(() => expect(notes).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: 'I was right' }));
+    await waitFor(() => expect(notes).toHaveLength(3));
+    expect(notes[2]).toBeGreaterThan(notes[1]);
+  });
+
+  it('stays silent when the answer sounds are switched off', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(0);
+    await saveSetting('learnSounds', false);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    await user.click(screen.getByRole('button', { name: pairs[shownTerm()] }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(notes).toEqual([]);
   });
 });

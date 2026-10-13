@@ -44,10 +44,16 @@ export interface Settings {
   accent: Accent;
   theme: ThemePref;
   flashcards: FlashcardPrefs;
+  /** Learn reads the English term aloud when it appears as the question. */
+  learnAutoplay: boolean;
+  /** Learn plays a short sound for a right and for a wrong answer. */
+  learnSounds: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   accent: 'en-US',
   theme: 'system',
   flashcards: { startWithDefinition: false, starredOnly: false, autoplay: false },
+  learnAutoplay: true,
+  learnSounds: true,
 };

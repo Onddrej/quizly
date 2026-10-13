@@ -13,6 +13,7 @@ import { TabBar } from '../../ui/TabBar';
 import { Button } from '../../ui/Button';
 import { FieldArea } from '../../ui/FieldArea';
 import { Segmented } from '../../ui/Segmented';
+import { Switch } from '../../ui/Switch';
 import { InlineConfirm } from '../../ui/InlineConfirm';
 import { useToast } from '../../ui/Toast';
 import { downloadText, readFileText } from './files';
@@ -139,6 +140,28 @@ export function SettingsPage() {
           {speech.supported && speech.voicesLoaded && !speech.hasEnglish && (
             <p className={styles.note}>No English voice found on this device. Install one in Android Settings → Text-to-speech.</p>
           )}
+        </div>
+      </section>
+
+      <section className={styles.section} aria-labelledby="learn-heading">
+        <h2 id="learn-heading" className={styles.sectionTitle}>
+          Learn
+        </h2>
+        <div className={`card ${styles.box}`}>
+          {speech.available && (
+            <Switch
+              id="learn-autoplay"
+              label="Read the word aloud in Learn"
+              checked={settings.learnAutoplay}
+              onChange={(v) => void saveSetting('learnAutoplay', v).catch(() => toast("Couldn't save. Try again."))}
+            />
+          )}
+          <Switch
+            id="learn-sounds"
+            label="Play a sound for right and wrong answers"
+            checked={settings.learnSounds}
+            onChange={(v) => void saveSetting('learnSounds', v).catch(() => toast("Couldn't save. Try again."))}
+          />
         </div>
       </section>
 

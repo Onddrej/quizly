@@ -413,3 +413,44 @@ describe('SettingsPage diagnostics', () => {
     expect(diagnostics.entries()).toEqual([]);
   });
 });
+
+describe('SettingsPage learn options', () => {
+  class FakeUtterance {
+    constructor(public text: string) {}
+  }
+  const stubVoices = (langs: string[]) => {
+    vi.stubGlobal('speechSynthesis', {
+      speak: vi.fn(),
+      cancel: vi.fn(),
+      getVoices: () => langs.map((lang) => ({ lang, name: lang, localService: true })),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
+  };
+
+  it('offers automatic reading in Learn, on by default, and saves the choice', async () => {
+    stubVoices(['en-US']);
+    const { user } = renderRoute('/settings');
+    const toggle = await screen.findByRole('switch', { name: 'Read the word aloud in Learn' });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    await waitFor(async () => expect((await loadSettings()).learnAutoplay).toBe(false));
+    expect(screen.getByRole('switch', { name: 'Read the word aloud in Learn' })).not.toBeChecked();
+  });
+
+  it('hides automatic reading when the device has no English voice', async () => {
+    stubVoices(['sk-SK']);
+    renderRoute('/settings');
+    await screen.findByRole('heading', { name: 'Learn' });
+    expect(screen.queryByRole('switch', { name: 'Read the word aloud in Learn' })).not.toBeInTheDocument();
+  });
+
+  it('offers the answer sounds, on by default, and saves the choice', async () => {
+    const { user } = renderRoute('/settings');
+    const toggle = await screen.findByRole('switch', { name: 'Play a sound for right and wrong answers' });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    await waitFor(async () => expect((await loadSettings()).learnSounds).toBe(false));
+  });
+});

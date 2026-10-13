@@ -7,11 +7,14 @@ import { setCardStage } from '../../db/cards';
 import type { Card, Stage } from '../../db/types';
 import { useLeave } from '../../app/navigation';
 import { NotFound } from '../../app/NotFound';
+import { useSettings } from '../../app/SettingsContext';
 import { countStatuses } from '../../lib/progress';
 import { languageName } from '../../lib/languages';
 import { splitVariants } from '../../lib/text';
 import { splitExamples } from '../../lib/cardDetails';
 import { defaultRng } from '../../lib/random';
+import { playCorrect, playWrong } from '../../lib/sounds';
+import { useSpeech } from '../../lib/useSpeech';
 import { CardBack } from '../../ui/CardBack';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
@@ -117,6 +120,8 @@ export function LearnPage() {
   const { setId = '' } = useParams();
   const leave = useLeave(`/sets/${setId}`);
   const toast = useToast();
+  const speech = useSpeech();
+  const { learnAutoplay, learnSounds } = useSettings();
   const { loading, set, cards } = useSetData(setId);
   const [round, setRound] = useState<RoundState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
@@ -166,6 +171,22 @@ export function LearnPage() {
   const choices = useMemo(() => (current && stageType === 'choice' ? pickChoices(current, cards, defaultRng) : []), [questionKey, translationsKey]);
   // Fewer than two options (every card shares one translation) would be a free pass: type the English term instead.
   const type = stageType === 'choice' && choices.length < 2 ? 'write-term' : stageType;
+
+  // The English term is read aloud when it is the question (choice, typing the translation). When it is the answer
+  // (typing the English term) it stays silent: speaking it would give the answer away.
+  const askedTerm = current && type && type !== 'write-term' ? current.term : null;
+  const readAloud = learnAutoplay && speech.voicesLoaded && speech.hasEnglish && askedTerm !== null;
+  useEffect(() => {
+    if (readAloud && askedTerm) speech.say(askedTerm);
+  }, [readAloud, questionKey]);
+
+  // A short sound when an answer is graded: right (also a typo, or "I was right") or wrong.
+  const gradedAnswer = phase.kind === 'feedback' ? phase.pending : null;
+  useEffect(() => {
+    if (!gradedAnswer || !learnSounds) return;
+    if (gradedAnswer.correct) playCorrect();
+    else playWrong();
+  }, [gradedAnswer]);
 
   // The asked card was deleted in another tab: build a new round from what is left, or leave when too little is left.
   const askedCardGone = round !== null && currentId !== null && current === undefined;

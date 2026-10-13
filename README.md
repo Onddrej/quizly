@@ -16,6 +16,10 @@ Sets hold cards with a term, a translation and an optional definition and exampl
 - `npm run preview` serves the build at http://localhost:4173/quizly/ (the service worker only runs here, not in `npm run dev`)
 - `npm run icons` regenerates the PWA icons from `public/logo.svg`
 
+## Learn mode extras
+
+The English term is read aloud when it is the question, and a short sound marks a right or wrong answer. Both can be switched off in Settings → Learn.
+
 ## Diagnostics
 
 Quizly keeps a short log on the device (Settings → Diagnostics): uncaught errors, failed database writes and database operations slower than one second, with their timings. It holds error messages and timings, never your cards, and nothing is sent anywhere. "Copy report" puts the log plus device facts (build, browser, storage, how many sets and cards) on the clipboard so it can be pasted into a bug report.
