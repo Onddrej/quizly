@@ -37,7 +37,7 @@
 .okIcon { color: var(--good); }
 .noIcon { color: var(--bad); }
 
-.answer { display: grid; gap: 8px; }
+.answer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .input {
   width: 100%;
   min-height: 54px;
@@ -107,5 +107,9 @@
 .dontKnow { min-height: 40px; padding: 0 10px; font-size: 14px; }
 .hint { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
 .details { padding: 0 4px; }
-.copy { display: grid; gap: 14px; padding: 16px; }
+.copy { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
 .copyError { font-size: 14px; font-weight: 600; color: var(--bad); }
+.inputRow { display: flex; gap: 8px; align-items: stretch; }
+/* width 0 + flex-grow: the field's intrinsic width must not count as the row's minimum, or the row overflows a narrow card */
+.inputRow .input { flex: 1 1 0; width: 0; min-width: 0; }
+.overrule { justify-self: start; }

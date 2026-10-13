@@ -24,6 +24,9 @@ interface CopyAnswerProps {
  * After a missed typed answer: the correct answer stays on screen and has to be typed before the round moves on, as in
  * Quizlet. It sits in the page body, not the bottom panel, because a phone keyboard would cover the panel. Only an exact
  * copy counts (a typo is not accepted: the text is right there), and any one comma-separated variant is enough.
+ *
+ * Everything the user may need to press is at or above the field: Chrome puts an autofill bar between the field and the
+ * keyboard, and it covers whatever sits below the field.
  */
 export function CopyAnswer({ title, children, expected, language, speak, details, onMatch, onOverrule }: CopyAnswerProps) {
   const [value, setValue] = useState('');
@@ -47,6 +50,11 @@ export function CopyAnswer({ title, children, expected, language, speak, details
         {speak && <SpeakButton text={speak} />}
       </div>
       {details}
+      {onOverrule && (
+        <Button variant="ghost" className={styles.overrule} onClick={onOverrule}>
+          I was right
+        </Button>
+      )}
       <form
         className={styles.answer}
         autoComplete="off"
@@ -63,34 +71,30 @@ export function CopyAnswer({ title, children, expected, language, speak, details
         <label htmlFor="copy-input" className={styles.ask}>
           Type the answer to continue
         </label>
-        <input
-          id="copy-input"
-          ref={input}
-          value={value}
-          placeholder="Type the answer"
-          autoCapitalize="off"
-          autoCorrect="off"
-          enterKeyHint="go"
-          spellCheck={false}
-          aria-invalid={wrong || undefined}
-          aria-describedby={wrong ? 'copy-error' : undefined}
-          className={`${styles.input} ${wrong ? styles.inputNo : ''}`}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setWrong(false);
-          }}
-        />
         {wrong && (
           <p id="copy-error" role="alert" className={styles.copyError}>
             Not quite. Type the answer exactly as shown.
           </p>
         )}
-        <div className={styles.answerActions}>
-          {onOverrule && (
-            <Button variant="ghost" onClick={onOverrule}>
-              I was right
-            </Button>
-          )}
+        <div className={styles.inputRow}>
+          <input
+            id="copy-input"
+            ref={input}
+            value={value}
+            placeholder="Type the answer"
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            enterKeyHint="go"
+            spellCheck={false}
+            aria-invalid={wrong || undefined}
+            aria-describedby={wrong ? 'copy-error' : undefined}
+            className={`${styles.input} ${wrong ? styles.inputNo : ''}`}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setWrong(false);
+            }}
+          />
           <Button type="submit">Continue</Button>
         </div>
       </form>

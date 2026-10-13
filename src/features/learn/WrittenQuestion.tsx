@@ -43,22 +43,26 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
         <label htmlFor="answer-input" className={styles.ask}>
           {instruction}
         </label>
-        <input
-          id="answer-input"
-          ref={input}
-          value={value}
-          disabled={locked}
-          placeholder="Type the answer"
-          autoCapitalize="off"
-          autoCorrect="off"
-          enterKeyHint="go"
-          spellCheck={false}
-          className={`${styles.input} ${resultClass}`}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <Button type="submit" block disabled={locked}>
-          Answer
-        </Button>
+        {/* The button shares the row with the field: Chrome's autofill bar on top of the keyboard would cover a button below it. */}
+        <div className={styles.inputRow}>
+          <input
+            id="answer-input"
+            ref={input}
+            value={value}
+            disabled={locked}
+            placeholder="Type the answer"
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            enterKeyHint="go"
+            spellCheck={false}
+            className={`${styles.input} ${resultClass}`}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <Button type="submit" disabled={locked}>
+            Answer
+          </Button>
+        </div>
       </form>
     </>
   );

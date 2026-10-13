@@ -629,3 +629,28 @@ describe('LearnPage progress and input', () => {
     expect(await screen.findByLabelText('Type the English term')).toHaveAttribute('enterkeyhint', 'go');
   });
 });
+
+describe('LearnPage with the phone keyboard and its autofill bar', () => {
+  it('turns browser autofill off for the answer field and keeps Answer in the same row as the field', async () => {
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    const input = await screen.findByLabelText('Type the English term');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+    // Chrome's autofill bar sits under the field and would cover a button placed below it.
+    expect(input.parentElement).toContainElement(screen.getByRole('button', { name: 'Answer' }));
+  });
+
+  it('keeps Continue beside the retype field, and "I was right" and the error above it', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    const input = screen.getByLabelText('Type the answer to continue');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+    expect(input.parentElement).toContainElement(screen.getByRole('button', { name: 'Continue' }));
+    const above = (el: HTMLElement) => el.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(above(screen.getByRole('button', { name: 'I was right' }))).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(above(screen.getByRole('alert'))).toBeTruthy();
+  });
+});
