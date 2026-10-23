@@ -602,20 +602,61 @@ describe('LearnPage small sets', () => {
 });
 
 describe('LearnPage progress and input', () => {
-  it('reads the progress numbers as "N mastered" and "N terms" to a screen reader', async () => {
+  it('shows the progress of this round, not of the whole set', async () => {
+    // 3 cards in the set, one already mastered: the round has the other 2
     const id = await setWithStage(0, { luggage: 'batožina', departure: 'odchod, odlet', gate: 'brána' });
     await db.cards.filter((c) => c.setId === id && c.term === 'luggage').modify({ stage: 4 });
     renderRoute(`/sets/${id}/learn`);
     await screen.findByText('Choose the matching translation');
-    const mastered = screen.getByText('mastered', { selector: '.visually-hidden' }).parentElement!;
-    expect(mastered).toHaveTextContent('1 mastered');
-    expect(mastered).not.toHaveAttribute('aria-label');
-    const total = screen.getByText('terms', { selector: '.visually-hidden' }).parentElement!;
-    expect(total).toHaveTextContent('3 terms');
-    expect(total).not.toHaveAttribute('aria-label');
-    // The visible text is still just the two numbers.
-    expect(mastered.firstChild?.textContent).toBe('1');
-    expect(total.firstChild?.textContent).toBe('3');
+    const bar = screen.getByRole('progressbar', { name: 'Round progress' });
+    expect(bar).toHaveAttribute('aria-valuemin', '0');
+    expect(bar).toHaveAttribute('aria-valuemax', '2');
+    expect(bar).toHaveAttribute('aria-valuenow', '0');
+    expect(screen.getByText('0 done')).toBeInTheDocument();
+    expect(screen.getByText('2 left')).toBeInTheDocument();
+    // nothing about the set as a whole
+    expect(screen.queryByText(/mastered/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/3 terms/)).not.toBeInTheDocument();
+  });
+
+  it('counts a card as done once it is answered correctly, and not after a miss', async () => {
+    const three = { luggage: 'batožina', departure: 'odchod, odlet', gate: 'brána' } as const;
+    const anyTerm = () => screen.getByText(/^(luggage|departure|gate)$/).textContent as keyof typeof three;
+    const id = await setWithStage(0, three);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByText('Choose the matching translation');
+    expect(screen.getByText('3 left')).toBeInTheDocument();
+
+    // a miss: the card stays in the round
+    const first = anyTerm();
+    const wrong = Object.entries(three).find(([term]) => term !== first)![1];
+    await user.click(screen.getByRole('button', { name: wrong }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(screen.getByText('Choose the matching translation')).toBeInTheDocument());
+    expect(screen.getByText('0 done')).toBeInTheDocument();
+    expect(screen.getByText('3 left')).toBeInTheDocument();
+
+    // a right answer: one card is done
+    await user.click(screen.getByRole('button', { name: three[anyTerm()] }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(screen.getByText('1 done')).toBeInTheDocument());
+    expect(screen.getByText('2 left')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Round progress' })).toHaveAttribute('aria-valuenow', '1');
+  });
+
+  it('starts every new round at zero', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    for (let i = 0; i < 2; i++) {
+      await waitFor(() => expect(screen.getByLabelText('Type the English term')).toBeEnabled());
+      await user.type(screen.getByLabelText('Type the English term'), shownDefinitionTerm());
+      await user.click(screen.getByRole('button', { name: 'Answer' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+    }
+    expect(await screen.findByRole('heading', { name: 'Round 1 done' })).toBeInTheDocument();
+    await afterTapGuard();
+    await user.click(screen.getByRole('button', { name: 'Continue to round 2' }));
+    expect(await screen.findByText('0 done')).toBeInTheDocument();
   });
 
   it('asks the phone keyboard for a Go key on the answer input', async () => {

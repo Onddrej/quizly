@@ -17,7 +17,6 @@ import { useSpeech } from '../../lib/useSpeech';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
-import { StageBar } from '../../ui/StageBar';
 import { useToast } from '../../ui/Toast';
 import { checkAnswer, type AnswerVerdict } from './answerCheck';
 import {
@@ -39,9 +38,9 @@ import { CopyAnswer } from './CopyAnswer';
 import { MultipleChoice } from './MultipleChoice';
 import { WrittenQuestion } from './WrittenQuestion';
 import { Feedback } from './Feedback';
+import { RoundProgress } from './RoundProgress';
 import { RoundSummary } from './RoundSummary';
 import { SetComplete } from './SetComplete';
-import styles from './Learn.module.css';
 
 interface Pending {
   type: QuestionType;
@@ -300,17 +299,7 @@ export function LearnPage() {
         )
       }
     >
-      <div className={styles.progress}>
-        <span className={styles.done}>
-          {counts.mastered}
-          <span className="visually-hidden"> mastered</span>
-        </span>
-        <StageBar counts={counts} size="sm" />
-        <span className={styles.total}>
-          {cards.length}
-          <span className="visually-hidden"> terms</span>
-        </span>
-      </div>
+      <RoundProgress done={round.cardIds.length - new Set(round.queue).size} total={round.cardIds.length} />
       {type === 'choice' && pending ? (
         <AnswerCard key={`answer:${questionKey}`} card={current} lang={set.definitionLang} picked={pending.correct ? undefined : pending.given} />
       ) : type === 'choice' ? (
