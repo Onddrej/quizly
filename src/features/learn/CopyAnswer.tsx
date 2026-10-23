@@ -32,8 +32,11 @@ export function CopyAnswer({ title, children, expected, language, speak, written
   const [wrong, setWrong] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
+  // On a touch screen the keyboard would cover most of this card the moment it opened, and the answer has to be read
+  // before it can be typed: the field waits for a tap there. With a mouse or a physical keyboard it is focused at once.
   useEffect(() => {
-    input.current?.focus();
+    const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    if (!touch) input.current?.focus();
   }, []);
 
   return (

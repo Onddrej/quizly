@@ -1042,3 +1042,44 @@ describe('LearnPage answer fields and Chrome\'s autofill strip', () => {
     expect(input).toHaveAttribute('enterkeyhint', 'go');
   });
 });
+
+describe('LearnPage retype field focus', () => {
+  const stubPointer = (coarse: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: coarse && query === '(pointer: coarse)',
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('focuses the retype field right away with a mouse or keyboard', async () => {
+    stubPointer(false);
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don\'t know?" }));
+    expect(screen.getByLabelText('Type the answer to continue')).toHaveFocus();
+  });
+
+  it('on a touch screen leaves the retype field unfocused, so the keyboard does not cover the answer being read', async () => {
+    stubPointer(true);
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don\'t know?" }));
+    const field = screen.getByLabelText('Type the answer to continue');
+    expect(field).not.toHaveFocus();
+    // tapping it still works as usual
+    await user.click(field);
+    expect(field).toHaveFocus();
+  });
+
+  it('on a touch screen the next question still gets its field focused', async () => {
+    stubPointer(true);
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don\'t know?" }));
+    await copyAnswer(user);
+    await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
+    expect(await screen.findByLabelText('Type the English term')).toHaveFocus();
+  });
+});
