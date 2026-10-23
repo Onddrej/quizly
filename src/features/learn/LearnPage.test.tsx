@@ -1,3 +1,4 @@
+import indexHtml from '../../../index.html?raw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
@@ -948,5 +949,38 @@ describe('LearnPage one field at a time', () => {
     await copyAnswer(user);
     await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+});
+
+describe('LearnPage typed question and scrolling', () => {
+  afterEach(() => {
+    delete (Element.prototype as { scrollTo?: unknown }).scrollTo;
+  });
+
+  it('shows a typed question from the top of the page body, so the question is never scrolled away', async () => {
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollTo', { configurable: true, writable: true, value: scroll });
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the English term');
+    const calls = scroll.mock.calls.map((c, i) => ({ arg: c[0], el: scroll.mock.contexts[i] as Element }));
+    expect(calls.some((c) => c.el.tagName === 'MAIN' && (c.arg as ScrollToOptions).top === 0)).toBe(true);
+  });
+
+  it('does that again for the next typed question after a retype', async () => {
+    const scroll = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollTo', { configurable: true, writable: true, value: scroll });
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don\'t know?" }));
+    await copyAnswer(user);
+    await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
+    await screen.findByLabelText('Type the English term');
+    const fromMain = scroll.mock.contexts.filter((el) => (el as Element).tagName === 'MAIN').length;
+    expect(fromMain).toBeGreaterThanOrEqual(2);
+  });
+
+  it('lets the browser resize the page for the keyboard, so nothing is panned out of view', () => {
+    expect(indexHtml).toMatch(/<meta name="viewport"[^>]*interactive-widget=resizes-content/);
   });
 });

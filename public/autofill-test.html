@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<meta name="robots" content="noindex">
+<title>Quizly autofill test</title>
+<style>
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; padding: 16px 16px 64px; line-height: 1.4; background: Canvas; color: CanvasText; }
+h1 { font-size: 20px; margin: 0 0 8px; }
+h2 { font-size: 16px; margin: 0 0 2px; }
+p { margin: 0 0 8px; font-size: 14px; }
+section { margin: 0 0 20px; padding: 12px; border: 1px solid GrayText; border-radius: 10px; }
+input, textarea, .edit { box-sizing: border-box; width: 100%; min-height: 48px; padding: 10px 12px; font: inherit; font-size: 17px; border: 2px solid GrayText; border-radius: 10px; background: Field; color: FieldText; }
+.edit { display: block; }
+.vote { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+button { min-height: 44px; padding: 0 14px; font: inherit; font-size: 15px; border: 2px solid GrayText; border-radius: 10px; background: ButtonFace; color: ButtonText; }
+button[aria-pressed="true"] { border-color: Highlight; font-weight: 700; }
+.mark { font-size: 14px; }
+#out { white-space: pre-wrap; font-size: 13px; padding: 10px; border: 1px dashed GrayText; border-radius: 10px; }
+</style>
+</head>
+<body>
+<h1>Autofill bar test</h1>
+<p>Temporary page. Tap into each field in turn and look at the strip above the keyboard (passwords, payment methods, addresses). Then press <b>Bar shown</b> or <b>No bar</b> under that field. At the end press <b>Copy results</b> and paste the text to Claude.</p>
+
+<section>
+  <h2>A. Current Quizly field</h2>
+  <p>type=text, autocomplete=off, inside a form with autocomplete=off.</p>
+  <form autocomplete="off" onsubmit="return false"><input type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Tap here"></form>
+  <div class="vote" data-v="A"></div>
+</section>
+
+<section>
+  <h2>B. Plain field</h2>
+  <p>type=text with no attributes at all (the baseline).</p>
+  <input type="text" placeholder="Tap here">
+  <div class="vote" data-v="B"></div>
+</section>
+
+<section>
+  <h2>C. Unrecognised autocomplete word</h2>
+  <p>autocomplete="quizly-answer", name="quizly-answer" (Chrome skips words it does not know).</p>
+  <input type="text" name="quizly-answer" autocomplete="quizly-answer" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Tap here">
+  <div class="vote" data-v="C"></div>
+</section>
+
+<section>
+  <h2>D. Read-only until tapped</h2>
+  <p>readonly, the attribute is removed on focus.</p>
+  <input type="text" readonly onfocus="this.removeAttribute('readonly')" autocomplete="off" placeholder="Tap here">
+  <div class="vote" data-v="D"></div>
+</section>
+
+<section>
+  <h2>E. Search field</h2>
+  <p>type=search, autocomplete=off.</p>
+  <input type="search" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Tap here">
+  <div class="vote" data-v="E"></div>
+</section>
+
+<section>
+  <h2>F. Text area</h2>
+  <p>One-row textarea, autocomplete=off.</p>
+  <textarea rows="1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Tap here"></textarea>
+  <div class="vote" data-v="F"></div>
+</section>
+
+<section>
+  <h2>G. Editable block</h2>
+  <p>A div with contenteditable (not a form control at all).</p>
+  <div class="edit" contenteditable="plaintext-only" role="textbox" aria-label="Test field" enterkeyhint="go" spellcheck="false" autocapitalize="off"></div>
+  <div class="vote" data-v="G"></div>
+</section>
+
+<section>
+  <h2>H. One-time-code field</h2>
+  <p>autocomplete="one-time-code".</p>
+  <input type="text" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Tap here">
+  <div class="vote" data-v="H"></div>
+</section>
+
+<button id="copy" type="button">Copy results</button>
+<p id="note"></p>
+<div id="out"></div>
+
+<script>
+  var results = {};
+  document.querySelectorAll('.vote').forEach(function (box) {
+    var id = box.getAttribute('data-v');
+    [['bar', 'Bar shown'], ['none', 'No bar']].forEach(function (choice) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = choice[1];
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', function () {
+        results[id] = choice[0];
+        box.querySelectorAll('button').forEach(function (other) { other.setAttribute('aria-pressed', String(other === b)); });
+        render();
+      });
+      box.appendChild(b);
+    });
+  });
+  function text() {
+    var lines = Object.keys(results).sort().map(function (k) { return k + ': ' + (results[k] === 'bar' ? 'bar shown' : 'no bar'); });
+    return 'Autofill test\n' + lines.join('\n') + '\n' + navigator.userAgent;
+  }
+  function render() { document.getElementById('out').textContent = text(); }
+  document.getElementById('copy').addEventListener('click', function () {
+    var note = document.getElementById('note');
+    (navigator.clipboard ? navigator.clipboard.writeText(text()) : Promise.reject()).then(
+      function () { note.textContent = 'Copied.'; },
+      function () { note.textContent = 'Could not copy: select the text below instead.'; }
+    );
+  });
+  render();
+</script>
+</body>
+</html>

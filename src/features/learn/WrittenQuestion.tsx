@@ -21,8 +21,12 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
   const [value, setValue] = useState('');
   const input = useRef<HTMLInputElement>(null);
 
+  // A new typed question starts at the top of the page body: the previous screen (a tall retype card) left it scrolled
+  // down, which would show the field with the question above it out of sight. Focus without scrolling, so the browser
+  // does not move the page again.
   useEffect(() => {
-    input.current?.focus();
+    input.current?.closest('main')?.scrollTo?.({ top: 0 });
+    input.current?.focus({ preventScroll: true });
   }, []);
 
   const resultClass = result === 'ok' ? styles.inputOk : result === 'no' ? styles.inputNo : '';

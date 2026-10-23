@@ -125,3 +125,11 @@
 .detailExamples { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .detailExamples li { padding-left: 10px; border-left: 3px solid var(--accent); font-size: 15px; font-style: italic; line-height: 1.4; color: var(--ink-2); overflow-wrap: anywhere; }
 .hl { background: none; color: var(--accent-ink); font-style: normal; font-weight: 700; }
+
+/* A short screen (a phone with the keyboard open): a more compact question card, so the question and the field fit together. */
+@media (max-height: 560px) {
+  .prompt { gap: 4px; padding: 14px; }
+  .promptLabel { min-height: 32px; }
+  .word { min-height: 0; font-size: 26px; }
+  .answerWord { font-size: 26px; }
+}
