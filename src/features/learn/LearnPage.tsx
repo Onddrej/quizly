@@ -174,6 +174,14 @@ export function LearnPage() {
     else playWrong();
   }, [gradedAnswer]);
 
+  // After a missed typed answer ("Don't know?" included) the English term is read aloud with the answer: the question
+  // that read it is over, and the correct text is on screen now. Not after "I was right" (that turns the answer correct).
+  const canSpeak = learnAutoplay && speech.voicesLoaded && speech.hasEnglish;
+  useEffect(() => {
+    if (!gradedAnswer || gradedAnswer.correct || gradedAnswer.type === 'choice' || !canSpeak || !current) return;
+    speech.say(current.term);
+  }, [gradedAnswer]);
+
   // The asked card was deleted in another tab: build a new round from what is left, or leave when too little is left.
   const askedCardGone = round !== null && currentId !== null && current === undefined;
   useEffect(() => {
@@ -331,7 +339,11 @@ export function LearnPage() {
           speak={copy.speak}
           written={pending.outcome === 'wrong' ? pending.given : undefined}
           details={details}
-          onMatch={() => void next()}
+          onMatch={() => {
+            // the missed answer is now typed correctly: the same short confirmation as for a right answer
+            if (learnSounds) playCorrect();
+            void next();
+          }}
           onOverrule={copy.canOverrule ? overrule : undefined}
         >
           {copy.body}

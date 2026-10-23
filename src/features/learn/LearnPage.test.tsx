@@ -720,6 +720,69 @@ describe('LearnPage automatic pronunciation', () => {
     expect(synth.speak).not.toHaveBeenCalled();
   });
 
+  it('reads the English answer aloud when "Don\'t know?" reveals it', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    const answer = shownCorrectAnswer();
+    await waitFor(() => expect(spoken(synth)).toEqual([answer]));
+  });
+
+  it('reads the term again when "Don\'t know?" is pressed on a question that already read it', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    const term = shownTerm();
+    await waitFor(() => expect(spoken(synth)).toEqual([term]));
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    await waitFor(() => expect(spoken(synth)).toEqual([term, term]));
+  });
+
+  it('reads the English term aloud after a wrong typed answer, not after a right one', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), shownDefinitionTerm());
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+
+  it('reads the term aloud after a wrong typed answer', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    const answer = shownCorrectAnswer();
+    await waitFor(() => expect(spoken(synth)).toEqual([answer]));
+  });
+
+  it('does not read the answer aloud after "I was right"', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    await waitFor(() => expect(synth.speak).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole('button', { name: 'I was right' }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent after "Don\'t know?" when automatic reading is switched off', async () => {
+    const synth = stubSpeech();
+    const id = await setWithStage(2);
+    await saveSetting('learnAutoplay', false);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(synth.speak).not.toHaveBeenCalled();
+  });
+
   it('stays silent on a device without an English voice', async () => {
     const synth = stubSpeech(['sk-SK']);
     const id = await setWithStage(0);
@@ -803,6 +866,35 @@ describe('LearnPage answer sounds', () => {
     await user.click(screen.getByRole('button', { name: 'I was right' }));
     await waitFor(() => expect(notes).toHaveLength(3));
     expect(notes[2]).toBeGreaterThan(notes[1]);
+  });
+
+  it('plays the right-answer sound when a missed answer is typed correctly, and none for a wrong retype', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(3);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    await waitFor(() => expect(notes).toHaveLength(1));
+    await user.type(screen.getByLabelText('Type the answer to continue'), 'wrong{Enter}');
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(notes).toHaveLength(1);
+    await user.clear(screen.getByLabelText('Type the answer to continue'));
+    await typeCopy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(notes).toHaveLength(3));
+    expect(notes[2]).toBeGreaterThan(notes[1]);
+  });
+
+  it('keeps the retype silent when the answer sounds are switched off', async () => {
+    const notes = stubAudio();
+    const id = await setWithStage(3);
+    await saveSetting('learnSounds', false);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the translation in Slovak');
+    await user.click(screen.getByRole('button', { name: "Don't know?" }));
+    await copyAnswer(user);
+    await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
+    expect(notes).toEqual([]);
   });
 
   it('stays silent when the answer sounds are switched off', async () => {
