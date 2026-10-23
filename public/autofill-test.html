@@ -81,6 +81,20 @@ button[aria-pressed="true"] { border-color: Highlight; font-weight: 700; }
   <div class="vote" data-v="H"></div>
 </section>
 
+<section>
+  <h2>I. Form with a submit button</h2>
+  <p>A form with a plain text field and a submit button, no autocomplete attributes.</p>
+  <form onsubmit="return false"><input type="text" aria-label="Test field" placeholder="Tap here"><button type="submit" style="margin-top:8px">Submit</button></form>
+  <div class="vote" data-v="I"></div>
+</section>
+
+<section>
+  <h2>J. Plain text area (as in Journal)</h2>
+  <p>A multi-line textarea with no attributes and no form, like the note field in the Journal app.</p>
+  <textarea aria-label="Entry text" placeholder="Tap here"></textarea>
+  <div class="vote" data-v="J"></div>
+</section>
+
 <button id="copy" type="button">Copy results</button>
 <p id="note"></p>
 <div id="out"></div>
