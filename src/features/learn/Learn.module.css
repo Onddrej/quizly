@@ -133,3 +133,10 @@
   .word { min-height: 0; font-size: 26px; }
   .answerWord { font-size: 26px; }
 }
+
+/* The answer fields are type=search (so Chrome does not show its autofill strip); drop the search look that comes with it. */
+.input { -webkit-appearance: none; appearance: none; }
+.input::-webkit-search-decoration,
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-results-button,
+.input::-webkit-search-results-decoration { -webkit-appearance: none; appearance: none; display: none; }

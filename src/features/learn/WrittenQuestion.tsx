@@ -49,11 +49,14 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
           <label htmlFor="answer-input" className={styles.ask}>
             {instruction}
           </label>
-          {/* The button shares the row with the field: Chrome's autofill bar on top of the keyboard would cover a button below it. */}
+          {/* type=search: Chrome on Android shows its autofill strip (passwords, payments, addresses) above the keyboard for
+              type=text fields however they are configured, but not for search fields (tested on a phone). The button still
+              shares the row with the field, so a strip would not cover it. */}
           <div className={styles.inputRow}>
             <input
               id="answer-input"
               ref={input}
+              type="search"
               value={value}
               disabled={locked}
               placeholder="Type the answer"

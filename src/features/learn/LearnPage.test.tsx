@@ -917,7 +917,7 @@ describe('LearnPage one field at a time', () => {
     const { user } = renderRoute(`/sets/${id}/learn`);
     await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
     await user.click(screen.getByRole('button', { name: 'Answer' }));
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1);
     expect(screen.getByLabelText('Type the answer to continue')).toBeInTheDocument();
     expect(screen.queryByLabelText('Type the English term')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Answer' })).not.toBeInTheDocument();
@@ -928,7 +928,7 @@ describe('LearnPage one field at a time', () => {
     const id = await setWithStage(2);
     const { user } = renderRoute(`/sets/${id}/learn`);
     await user.click(await screen.findByRole('button', { name: "Don't know?" }));
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1);
     expect(screen.getByRole('region', { name: 'Correct answer' })).not.toHaveTextContent('You wrote');
   });
 
@@ -939,7 +939,7 @@ describe('LearnPage one field at a time', () => {
     await user.click(screen.getByRole('button', { name: 'Answer' }));
     expect(screen.getByText('Correct')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: "Don't know?" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1);
   });
 
   it('shows the next question with its own single field after the retype', async () => {
@@ -948,7 +948,7 @@ describe('LearnPage one field at a time', () => {
     await user.click(await screen.findByRole('button', { name: "Don't know?" }));
     await copyAnswer(user);
     await waitFor(() => expect(screen.queryByLabelText('Type the answer to continue')).not.toBeInTheDocument());
-    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1);
   });
 });
 
@@ -982,5 +982,28 @@ describe('LearnPage typed question and scrolling', () => {
 
   it('lets the browser resize the page for the keyboard, so nothing is panned out of view', () => {
     expect(indexHtml).toMatch(/<meta name="viewport"[^>]*interactive-widget=resizes-content/);
+  });
+});
+
+describe('LearnPage answer fields and Chrome\'s autofill strip', () => {
+  // Measured on a phone (public/autofill-test.html, Chrome 155 on Android): the strip with passwords, payment methods and
+  // addresses shows above the keyboard for type=text fields whatever their attributes (also with autocomplete=off, an
+  // unknown autocomplete word or inside a form), and does not show for type=search, textarea and contenteditable.
+  it('uses a search field for typing the answer, which Chrome does not offer autofill for', async () => {
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    const input = await screen.findByLabelText('Type the English term');
+    expect(input).toHaveAttribute('type', 'search');
+    expect(input).toHaveAttribute('enterkeyhint', 'go');
+    expect(input).toHaveAttribute('autocomplete', 'off');
+  });
+
+  it('uses a search field for retyping the correct answer too', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don\'t know?" }));
+    const input = screen.getByLabelText('Type the answer to continue');
+    expect(input).toHaveAttribute('type', 'search');
+    expect(input).toHaveAttribute('enterkeyhint', 'go');
   });
 });

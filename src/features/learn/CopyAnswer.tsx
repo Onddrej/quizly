@@ -88,6 +88,7 @@ export function CopyAnswer({ title, children, expected, language, speak, written
           <input
             id="copy-input"
             ref={input}
+            type="search"
             value={value}
             placeholder="Type the answer"
             autoComplete="off"
