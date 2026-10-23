@@ -32,7 +32,7 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
   const resultClass = result === 'ok' ? styles.inputOk : result === 'no' ? styles.inputNo : '';
   return (
     <>
-      <PromptCard label={label} word={prompt} lang={promptLang} speak={speak} onDontKnow={onDontKnow} locked={locked} />
+      <PromptCard label={label} word={prompt} lang={promptLang} speak={speak} />
       {!retype && (
         <form
           className={styles.answer}
@@ -50,28 +50,30 @@ export function WrittenQuestion({ label, prompt, promptLang, speak, instruction,
             {instruction}
           </label>
           {/* type=search: Chrome on Android shows its autofill strip (passwords, payments, addresses) above the keyboard for
-              type=text fields however they are configured, but not for search fields (tested on a phone). The button still
-              shares the row with the field, so a strip would not cover it. */}
-          <div className={styles.inputRow}>
-            <input
-              id="answer-input"
-              ref={input}
-              type="search"
-              value={value}
-              disabled={locked}
-              placeholder="Type the answer"
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              enterKeyHint="go"
-              spellCheck={false}
-              className={`${styles.input} ${resultClass}`}
-              onChange={(e) => setValue(e.target.value)}
-            />
-            <Button type="submit" disabled={locked}>
-              Answer
-            </Button>
-          </div>
+              type=text fields however they are configured, but not for search fields (tested on a phone). */}
+          <input
+            id="answer-input"
+            ref={input}
+            type="search"
+            value={value}
+            disabled={locked}
+            placeholder="Type the answer"
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            enterKeyHint="go"
+            spellCheck={false}
+            className={`${styles.input} ${resultClass}`}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          {!locked && (
+            <div className={styles.answerActions}>
+              <Button variant="ghost" onClick={onDontKnow}>
+                Don't know?
+              </Button>
+              <Button type="submit">Answer</Button>
+            </div>
+          )}
         </form>
       )}
     </>

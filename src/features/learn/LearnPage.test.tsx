@@ -541,12 +541,22 @@ describe('LearnPage retyping a missed answer', () => {
     expect(screen.getByLabelText('Type the answer to continue')).toBeInTheDocument();
   });
 
-  it('puts "Don\'t know?" ahead of the answer field, so the keyboard never covers it', async () => {
+  it('puts "Don\'t know?" and "Answer" in one row under the answer field', async () => {
     const id = await setWithStage(2);
     renderRoute(`/sets/${id}/learn`);
     const input = await screen.findByLabelText('Type the English term');
     const dontKnow = screen.getByRole('button', { name: "Don't know?" });
-    expect(dontKnow.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const answer = screen.getByRole('button', { name: 'Answer' });
+    expect(dontKnow.parentElement).toBe(answer.parentElement);
+    expect(input.compareDocumentPosition(dontKnow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(dontKnow.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps "Don\'t know?" out of the question card header', async () => {
+    const id = await setWithStage(2);
+    renderRoute(`/sets/${id}/learn`);
+    await screen.findByLabelText('Type the English term');
+    expect(screen.getByRole('button', { name: "Don't know?" }).closest('.card')).toBeNull();
   });
 
   it('brings a missed card back as often as it takes: it is asked again until it is right', async () => {
@@ -615,28 +625,53 @@ describe('LearnPage progress and input', () => {
   });
 });
 
-describe('LearnPage with the phone keyboard and its autofill bar', () => {
-  it('turns browser autofill off for the answer field and keeps Answer in the same row as the field', async () => {
+describe('LearnPage answer rows', () => {
+  it('has the answer field full width with Answer under it, autofill off', async () => {
     const id = await setWithStage(2);
     renderRoute(`/sets/${id}/learn`);
     const input = await screen.findByLabelText('Type the English term');
     expect(input).toHaveAttribute('autocomplete', 'off');
-    // Chrome's autofill bar sits under the field and would cover a button placed below it.
-    expect(input.parentElement).toContainElement(screen.getByRole('button', { name: 'Answer' }));
+    const answer = screen.getByRole('button', { name: 'Answer' });
+    expect(answer.parentElement).not.toBe(input.parentElement);
+    expect(input.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps Continue beside the retype field, and "I was right" and the error above it', async () => {
+  it('puts "I was right" and Continue in one row under the retype field, with the error between', async () => {
     const id = await setWithStage(2);
     const { user } = renderRoute(`/sets/${id}/learn`);
     await user.type(await screen.findByLabelText('Type the English term'), 'baggage');
     await user.click(screen.getByRole('button', { name: 'Answer' }));
     const input = screen.getByLabelText('Type the answer to continue');
     expect(input).toHaveAttribute('autocomplete', 'off');
-    expect(input.parentElement).toContainElement(screen.getByRole('button', { name: 'Continue' }));
-    const above = (el: HTMLElement) => el.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(above(screen.getByRole('button', { name: 'I was right' }))).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(above(screen.getByRole('alert'))).toBeTruthy();
+    const right = screen.getByRole('button', { name: 'I was right' });
+    const next = screen.getByRole('button', { name: 'Continue' });
+    expect(right.parentElement).toBe(next.parentElement);
+    const follows = (a: HTMLElement, b: HTMLElement) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(follows(input, right)).toBeTruthy();
+    expect(follows(right, next)).toBeTruthy();
+    await user.click(next);
+    const alert = screen.getByRole('alert');
+    expect(follows(input, alert)).toBeTruthy();
+    expect(follows(alert, screen.getByRole('button', { name: 'Continue' }))).toBeTruthy();
+  });
+
+  it('shows Continue alone after "Don\'t know?"', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.click(await screen.findByRole('button', { name: "Don't know?" }));
+    expect(screen.queryByRole('button', { name: 'I was right' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+  });
+
+  it('hides the Answer row once the question is answered, leaving the field with its result', async () => {
+    const id = await setWithStage(2);
+    const { user } = renderRoute(`/sets/${id}/learn`);
+    await user.type(await screen.findByLabelText('Type the English term'), shownDefinitionTerm());
+    await user.click(screen.getByRole('button', { name: 'Answer' }));
+    expect(screen.getByText('Correct')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Answer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Don't know?" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Type the English term')).toBeDisabled();
   });
 });
 

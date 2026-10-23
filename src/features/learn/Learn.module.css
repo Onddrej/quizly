@@ -54,6 +54,7 @@
 .inputOk, .inputOk:disabled { border-color: var(--good-fill); background: var(--good-soft); }
 .inputNo, .inputNo:disabled { border-color: var(--bad-fill); background: var(--bad-soft); }
 .answerActions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.answerActions > :last-child { margin-left: auto; }
 
 .panel {
   display: grid;
@@ -103,16 +104,10 @@
 .complete h2 { font-size: 26px; font-weight: 800; text-wrap: balance; }
 .complete p { max-width: 34ch; color: var(--ink-2); }
 
-.tools { display: inline-flex; align-items: center; gap: 2px; }
-.dontKnow { min-height: 40px; padding: 0 10px; font-size: 14px; }
 .hint { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
 .details { display: grid; gap: 4px; padding: 0 4px; }
 .copy { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
 .copyError { font-size: 14px; font-weight: 600; color: var(--bad); }
-.inputRow { display: flex; gap: 8px; align-items: stretch; }
-/* width 0 + flex-grow: the field's intrinsic width must not count as the row's minimum, or the row overflows a narrow card */
-.inputRow .input { flex: 1 1 0; width: 0; min-width: 0; }
-.overrule { justify-self: start; }
 
 .answerCard { display: grid; gap: 6px; padding: 18px; }
 .answerWord { font-size: 30px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
