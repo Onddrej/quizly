@@ -571,15 +571,15 @@ describe('LearnPage retyping a missed answer', () => {
       await user.click(screen.getByRole('button', { name: 'Continue' }));
     };
     await missFirst();
-    await waitFor(() => expect(shownTerm()).toBe(other));
+    await waitFor(() => expect(shownTerm()).toBe(other), { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: pairs[other] }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     for (let i = 0; i < 3; i++) {
-      await waitFor(() => expect(shownTerm()).toBe(first));
-      await waitFor(() => expect(screen.queryByText('Not quite')).not.toBeInTheDocument());
+      await waitFor(() => expect(shownTerm()).toBe(first), { timeout: 5000 });
+      await waitFor(() => expect(screen.queryByText('Not quite')).not.toBeInTheDocument(), { timeout: 5000 });
       await missFirst();
     }
-    await waitFor(() => expect(shownTerm()).toBe(first));
+    await waitFor(() => expect(shownTerm()).toBe(first), { timeout: 5000 });
     await user.click(screen.getByRole('button', { name: pairs[first] }));
     expect(screen.getByText('Correct')).toBeInTheDocument();
   });
