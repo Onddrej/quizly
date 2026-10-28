@@ -10,6 +10,7 @@ export function loadSettings(): Promise<Settings> {
       ...DEFAULT_SETTINGS,
       ...stored,
       flashcards: { ...DEFAULT_SETTINGS.flashcards, ...(stored.flashcards ?? {}) },
+      reminder: { ...DEFAULT_SETTINGS.reminder, ...(stored.reminder ?? {}) },
     };
   });
 }

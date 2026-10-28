@@ -43,6 +43,8 @@ export interface SettingRow {
   value: unknown;
 }
 
+import type { ReminderSettings } from '../lib/reminder';
+
 export type Accent = 'en-US' | 'en-GB';
 export type ThemePref = 'system' | 'light' | 'dark';
 
@@ -60,6 +62,8 @@ export interface Settings {
   learnAutoplay: boolean;
   /** Learn plays a short sound for a right and for a wrong answer. */
   learnSounds: boolean;
+  /** The daily reminder to finish a round. */
+  reminder: ReminderSettings;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -68,4 +72,5 @@ export const DEFAULT_SETTINGS: Settings = {
   flashcards: { startWithDefinition: false, starredOnly: false, autoplay: false },
   learnAutoplay: true,
   learnSounds: true,
+  reminder: { enabled: false, time: '19:30' },
 };
