@@ -2,13 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useParams } from 'react-router';
 import { X } from 'lucide-react';
 import { useSetData } from '../../db/useSetData';
-import { completeRound, markStudied, resetProgress } from '../../db/sets';
+import { completeRound, markStudied, resetProgress, scheduleMissingReviews } from '../../db/sets';
 import { setCardStage } from '../../db/cards';
 import type { Card, Stage } from '../../db/types';
 import { useLeave } from '../../app/navigation';
 import { NotFound } from '../../app/NotFound';
 import { useSettings } from '../../app/SettingsContext';
 import { countStatuses } from '../../lib/progress';
+import { reviewAfterCorrect, reviewPatch } from '../../lib/review';
+import { currentLesson, localDay } from '../../lib/streak';
 import { languageName } from '../../lib/languages';
 import { splitVariants } from '../../lib/text';
 import { defaultRng } from '../../lib/random';
@@ -18,14 +20,16 @@ import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
 import { useToast } from '../../ui/Toast';
+import { useStudyDays } from '../streak/useStudyDays';
 import { checkAnswer, type AnswerVerdict } from './answerCheck';
 import {
+  ROUND_SIZE,
   answer,
   currentCardId,
   isRoundFinished,
   isSetMastered,
   pickChoices,
-  questionTypeFor,
+  questionTypeOf,
   startRound,
   summarizeRound,
   type QuestionType,
@@ -67,7 +71,7 @@ interface FeedbackCopy {
 /** A missed card stays in the round until it is answered correctly, so a miss always comes back in this round. */
 const AGAIN = "You'll see it again this round.";
 
-function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage): FeedbackCopy {
+function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage, reviewNote?: string): FeedbackCopy {
   const again = AGAIN;
   const next: Record<QuestionType, string> = {
     choice: "Next time you'll type the English term.",
@@ -75,7 +79,9 @@ function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage
     'write-term': stage <= 1 ? "Next time you'll type the English term." : `Next time you'll type the ${langName} translation.`,
     'write-definition': 'This term is now mastered.',
   };
-  if (p.overridden) return { title: 'Counted as correct', body: next[p.type], canOverrule: false };
+  // a mastered card that is being reviewed and was answered right says when it comes back, not what the next question is
+  const after = (type: QuestionType) => reviewNote ?? next[type];
+  if (p.overridden) return { title: 'Counted as correct', body: after(p.type), canOverrule: false };
   if (p.type === 'choice') {
     return p.correct
       ? { title: 'Correct', body: next.choice, canOverrule: false }
@@ -83,7 +89,7 @@ function describeFeedback(p: Pending, card: Card, langName: string, stage: Stage
   }
   const expected = p.type === 'write-term' ? card.term : card.definition;
   const speak = p.type === 'write-term' ? card.term : undefined;
-  if (p.outcome === 'exact') return { title: 'Correct', body: next[p.type], speak, canOverrule: false };
+  if (p.outcome === 'exact') return { title: 'Correct', body: after(p.type), speak, canOverrule: false };
   if (p.outcome === 'typo') {
     return {
       title: 'Correct, small typo',
@@ -108,6 +114,9 @@ export function LearnPage() {
   const speech = useSpeech();
   const { learnAutoplay, learnSounds } = useSettings();
   const { loading, set, cards } = useSetData(setId);
+  // The lesson in progress (days studied so far, plus today): spaced review is counted in these, not in calendar days.
+  const studyDays = useStudyDays();
+  const lesson = studyDays ? currentLesson(studyDays, localDay(Date.now())) : undefined;
   const [round, setRound] = useState<RoundState | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [roundNumber, setRoundNumber] = useState(1);
@@ -122,18 +131,19 @@ export function LearnPage() {
   );
   const counts = countStatuses(merged);
 
-  const beginRound = useCallback((source: Card[]) => {
-    if (isSetMastered(source)) {
+  const beginRound = useCallback((source: Card[], atLesson: number) => {
+    // Mastered cards that are due for review keep the set from being "done": they make (or join) the next round.
+    if (isSetMastered(source, atLesson)) {
       setRound(null);
       setPhase({ kind: 'complete' });
       return;
     }
-    setRound(startRound(source, defaultRng));
+    setRound(startRound(source, defaultRng, ROUND_SIZE, atLesson));
     setPhase({ kind: 'asking' });
   }, []);
 
   useEffect(() => {
-    if (loading || !set || started.current) return;
+    if (loading || !set || started.current || lesson === undefined) return;
     started.current = true;
     // A round needs at least two cards (the Set page disables Learn for fewer, but the Home link and deep links can still
     // arrive here): leave without starting one. `started` also keeps StrictMode's second effect run from leaving twice.
@@ -143,12 +153,14 @@ export function LearnPage() {
     }
     setRoundNumber(set.learnRound);
     void markStudied(set.id).catch(() => undefined); // a failed "last studied" stamp is not worth a toast
-    beginRound(cards);
-  }, [loading, set, cards, beginRound, leave]);
+    // cards mastered before spaced review existed get their first review (nothing is due in this round because of it)
+    void scheduleMissingReviews(set.id, lesson).catch(() => undefined);
+    beginRound(cards, lesson);
+  }, [loading, set, cards, lesson, beginRound, leave]);
 
   const currentId = round ? currentCardId(round) : null;
   const current = currentId ? byId.get(currentId) : undefined;
-  const stageType = round && currentId ? questionTypeFor(round.stages[currentId]) : null;
+  const stageType = round && currentId ? questionTypeOf(round, currentId) : null;
   const questionKey = round && currentId ? `${currentId}:${round.attempts[currentId] ?? 0}` : 'none';
   // New options per question, and when a translation changes (edited or deleted elsewhere); the card list also refreshes
   // after every save (stages, stars) and must not reshuffle them.
@@ -186,7 +198,7 @@ export function LearnPage() {
   useEffect(() => {
     if (!askedCardGone) return;
     if (cards.length < 2) leave();
-    else beginRound(merged);
+    else beginRound(merged, lesson ?? 1);
   }, [askedCardGone]);
 
   if (loading) return null;
@@ -222,7 +234,14 @@ export function LearnPage() {
     try {
       const result = answer(round, phase.pending.correct);
       try {
-        await setCardStage(currentId, result.stage, Date.now());
+        const review = reviewPatch({
+          previousStage: round.stages[currentId],
+          newStage: result.stage,
+          correct: phase.pending.correct,
+          reviewStep: round.reviewSteps?.[currentId] ?? byId.get(currentId)?.reviewStep,
+          lesson: lesson ?? 1,
+        });
+        await setCardStage(currentId, result.stage, Date.now(), review);
       } catch {
         // Stay on this feedback: nothing is saved and the round has not moved, so Continue can simply be tried again.
         toast("Couldn't save. Try again.");
@@ -242,7 +261,7 @@ export function LearnPage() {
 
   function nextRound() {
     setRoundNumber((n) => n + 1);
-    beginRound(merged);
+    beginRound(merged, lesson ?? 1);
   }
 
   async function studyAgain() {
@@ -253,7 +272,7 @@ export function LearnPage() {
       return;
     }
     setRoundNumber(1);
-    beginRound(cards.map((c) => ({ ...c, stage: 0 as const, lastAnsweredAt: undefined })));
+    beginRound(cards.map((c) => ({ ...c, stage: 0 as const, lastAnsweredAt: undefined })), lesson ?? 1);
   }
 
   if (phase.kind === 'complete') return <SetComplete total={cards.length} onStudyAgain={studyAgain} onBack={leave} />;
@@ -273,7 +292,11 @@ export function LearnPage() {
   if (!round || !current || !type) return null;
 
   const pending = phase.kind === 'feedback' ? phase.pending : null;
-  const copy = pending ? describeFeedback(pending, current, langName, round.stages[current.id]) : null;
+  // a card that was mastered when the round started and is still mastered was answered right in this review
+  const reviewed = round.startStages[current.id] === 4 && round.stages[current.id] === 4;
+  const interval = reviewed ? reviewAfterCorrect(round.reviewSteps?.[current.id] ?? 0, lesson ?? 1).nextReviewLesson - (lesson ?? 1) : 0;
+  const reviewNote = reviewed ? `Still mastered. You will see it again in ${interval} lessons.` : undefined;
+  const copy = pending ? describeFeedback(pending, current, langName, round.stages[current.id], reviewNote) : null;
   // A missed typed answer has to be typed again before the round moves on (shown in the page body, not the bottom panel:
   // a phone keyboard would cover the panel). Multiple choice misses and "I was right" use the panel as before.
   const needsCopy = pending !== null && !pending.correct && (pending.type === 'write-term' || pending.type === 'write-definition');
