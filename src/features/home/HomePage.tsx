@@ -3,6 +3,8 @@ import { Link } from 'react-router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, GalleryVerticalEnd, Search, Target, X } from 'lucide-react';
 import { listSetSummaries, type SetSummary } from '../../db/sets';
+import { StreakCard } from '../streak/StreakCard';
+import { useStudyDays } from '../streak/useStudyDays';
 import { normalize } from '../../lib/text';
 import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
@@ -48,6 +50,7 @@ function ResumeCard({ summary }: { summary: SetSummary }) {
 
 export function HomePage() {
   const summaries = useLiveQuery(listSetSummaries, []);
+  const studyDays = useStudyDays();
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -99,6 +102,7 @@ export function HomePage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           )}
+          {studyDays && !q && <StreakCard studyDays={studyDays} />}
           {resume && !q && (
             <section className={styles.section} aria-labelledby="resume-heading">
               <h2 id="resume-heading" className={styles.sectionTitle}>

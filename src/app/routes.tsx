@@ -5,6 +5,7 @@ import { SetPage } from '../features/set/SetPage';
 import { FlashcardsPage } from '../features/flashcards/FlashcardsPage';
 import { LearnPage } from '../features/learn/LearnPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { StreakPage } from '../features/streak/StreakPage';
 import { NotFound } from './NotFound';
 import { RouteError } from './RouteError';
 import { NavigationTracker } from './navigation';
@@ -31,6 +32,7 @@ export const routes: RouteObject[] = [
       { path: '/sets/:setId/flashcards', element: <FlashcardsPage /> },
       { path: '/sets/:setId/learn', element: <LearnPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/streak', element: <StreakPage /> },
       { path: '*', element: <NotFound /> },
     ],
   },

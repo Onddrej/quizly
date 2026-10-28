@@ -1,0 +1,45 @@
+/* Streak card (Home) */
+.card { display: grid; gap: 12px; padding: 16px; color: inherit; text-decoration: none; transition: transform .1s ease-out; }
+.card:active { transform: scale(.99); }
+.cardTop { display: flex; justify-content: space-between; align-items: center; }
+.count { display: inline-flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.countLabel { align-self: flex-end; padding-bottom: 3px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.flame { color: var(--learning-fill); }
+.chevron { color: var(--ink-2); }
+.hint { font-size: 13px; color: var(--ink-2); }
+
+/* Week: seven small circles */
+.week { display: flex; justify-content: space-between; gap: 6px; }
+.dot {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dot.done { background: var(--good-fill); color: var(--on-good-fill); }
+.dot.today { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+
+/* Streak page */
+.hero { display: grid; justify-items: center; gap: 4px; padding: 20px 16px; }
+.hero .week { width: 100%; margin-top: 12px; }
+.heroCount { display: flex; align-items: center; gap: 8px; font-size: 56px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.heroLabel { font-size: 15px; font-weight: 600; color: var(--ink-2); }
+.best { font-size: 13px; color: var(--ink-2); }
+
+/* Month calendar */
+.calendar { display: grid; gap: 10px; padding: 14px 12px 16px; }
+.calendarHead { display: flex; align-items: center; justify-content: space-between; }
+.monthTitle { font-size: 16px; font-weight: 700; }
+.weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.days { display: grid; gap: 6px; }
+.weekRow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); justify-items: center; }
+.day, .dayBlank { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dayFuture { color: var(--ink-2); font-weight: 500; }
+.dayDone { background: var(--good-fill); color: var(--on-good-fill); font-weight: 800; }
+.dayToday { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
