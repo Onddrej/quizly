@@ -26,6 +26,14 @@ export interface Card {
   examples?: string;
 }
 
+/** A local calendar day on which at least one learning round was completed (the streak and the lesson count come from these). */
+export interface StudyDay {
+  /** `YYYY-MM-DD`, the primary key. */
+  day: string;
+  /** Rounds completed on that day, at least 1. */
+  rounds: number;
+}
+
 export interface SettingRow {
   key: string;
   value: unknown;

@@ -1,6 +1,6 @@
 import { db } from './schema';
 import { tracedTransaction } from './trace';
-import type { Card, Stage, StudySet } from './types';
+import type { Card, Stage, StudyDay, StudySet } from './types';
 import { normalizeCardDetails } from '../lib/cardDetails';
 import { requestPersistentStorage } from '../lib/storage';
 
@@ -10,6 +10,8 @@ export interface Backup {
   exportedAt: string;
   sets: StudySet[];
   cards: Card[];
+  /** The study log (streak and lessons). Absent in backups made before it existed, which stay valid. */
+  studyDays?: StudyDay[];
 }
 
 export class BackupError extends Error {
@@ -24,12 +26,13 @@ export class BackupError extends Error {
  * parseBackup rejects the whole file because of a single orphan card, and the owner must always be able to restore their own backup.
  */
 export async function createBackup(now: Date = new Date()): Promise<Backup> {
-  const { sets, cards } = await tracedTransaction('createBackup', 'r', [db.sets, db.cards], async () => ({
+  const { sets, cards, studyDays } = await tracedTransaction('createBackup', 'r', [db.sets, db.cards, db.studyDays], async () => ({
     sets: await db.sets.toArray(),
     cards: await db.cards.toArray(),
+    studyDays: await db.studyDays.orderBy('day').toArray(),
   }));
   const setIds = new Set(sets.map((s) => s.id));
-  return { app: 'quizly', version: 1, exportedAt: now.toISOString(), sets, cards: cards.filter((c) => setIds.has(c.setId)) };
+  return { app: 'quizly', version: 1, exportedAt: now.toISOString(), sets, cards: cards.filter((c) => setIds.has(c.setId)), studyDays };
 }
 
 export function serializeBackup(backup: Backup): string {
@@ -72,6 +75,15 @@ function toCard(value: unknown): Card | null {
   return card;
 }
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+function toStudyDay(value: unknown): StudyDay | null {
+  if (!isObject(value)) return null;
+  const { day, rounds } = value;
+  if (!isString(day) || !DAY.test(day) || !isNumber(rounds) || !Number.isInteger(rounds) || rounds < 1) return null;
+  return { day, rounds };
+}
+
 export function parseBackup(text: string): Backup {
   let data: unknown;
   try {
@@ -88,13 +100,20 @@ export function parseBackup(text: string): Backup {
   const validCards = cards as Card[];
   const setIds = new Set(validSets.map((s) => s.id));
   if (validCards.some((c) => !setIds.has(c.setId))) throw new BackupError();
-  return {
+  const backup: Backup = {
     app: 'quizly',
     version: 1,
     exportedAt: isString(data.exportedAt) ? data.exportedAt : '',
     sets: validSets,
     cards: validCards,
   };
+  if (data.studyDays !== undefined) {
+    if (!Array.isArray(data.studyDays)) throw new BackupError();
+    const days = data.studyDays.map(toStudyDay);
+    if (days.some((d) => d === null)) throw new BackupError();
+    backup.studyDays = days as StudyDay[];
+  }
+  return backup;
 }
 
 /** How many of the backup's sets are already on this device (matched by id), so importing them would replace them and their progress. Reads only. */
@@ -107,12 +126,18 @@ export async function countExistingSets(backup: Backup): Promise<number> {
  * committed, asks the browser for persistent storage (spec 6.3): restoring a backup into a fresh profile is the first save there.
  */
 export async function importBackup(backup: Backup): Promise<{ sets: number; cards: number }> {
-  await tracedTransaction('importBackup', 'rw', [db.sets, db.cards], async () => {
+  await tracedTransaction('importBackup', 'rw', [db.sets, db.cards, db.studyDays], async () => {
     for (const set of backup.sets) {
       await db.cards.where('setId').equals(set.id).delete();
     }
     await db.sets.bulkPut(backup.sets);
     await db.cards.bulkPut(backup.cards);
+    // study days are merged into the ones on this device (the larger round count wins), never replaced: the streak is
+    // history, and restoring an older backup must not shorten it
+    for (const incoming of backup.studyDays ?? []) {
+      const existing = await db.studyDays.get(incoming.day);
+      await db.studyDays.put({ day: incoming.day, rounds: Math.max(incoming.rounds, existing?.rounds ?? 0) });
+    }
   });
   void requestPersistentStorage();
   return { sets: backup.sets.length, cards: backup.cards.length };

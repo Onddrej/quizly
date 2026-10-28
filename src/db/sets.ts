@@ -1,6 +1,7 @@
 // Writes keyed by an id that does not exist are silent no-ops, except updateSet, which throws.
 
 import { db } from './schema';
+import { bumpStudyDay } from './studyLog';
 import { tracedTransaction } from './trace';
 import type { Card, StudySet } from './types';
 import { normalizeCardDetails } from '../lib/cardDetails';
@@ -114,11 +115,13 @@ export async function resetProgress(setId: string): Promise<void> {
   });
 }
 
-export function completeRound(setId: string): Promise<void> {
-  return diagnostics.trace('completeRound', async () => {
+/** Counts the round as done: the set's round number goes up and today becomes a study day (streak), in one transaction. */
+export function completeRound(setId: string, now: number = Date.now()): Promise<void> {
+  return tracedTransaction('completeRound', 'rw', [db.sets, db.studyDays], async () => {
     await db.sets.where('id').equals(setId).modify((set) => {
       set.learnRound += 1;
     });
+    await bumpStudyDay(now);
   });
 }
 

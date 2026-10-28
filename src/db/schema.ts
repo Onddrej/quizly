@@ -1,11 +1,12 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Card, SettingRow, StudySet } from './types';
+import type { Card, SettingRow, StudyDay, StudySet } from './types';
 import { diagnostics } from '../lib/diagnostics';
 
 export class QuizlyDB extends Dexie {
   sets!: EntityTable<StudySet, 'id'>;
   cards!: EntityTable<Card, 'id'>;
   settings!: EntityTable<SettingRow, 'key'>;
+  studyDays!: EntityTable<StudyDay, 'day'>;
 
   constructor(name = 'quizly') {
     super(name);
@@ -14,6 +15,8 @@ export class QuizlyDB extends Dexie {
       cards: 'id, setId, [setId+position]',
       settings: 'key',
     });
+    // version 2 adds the study log; the other tables carry over unchanged
+    this.version(2).stores({ studyDays: 'day' });
   }
 }
 
