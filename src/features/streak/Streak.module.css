@@ -43,3 +43,11 @@
 .dayFuture { color: var(--ink-2); font-weight: 500; }
 .dayDone { background: var(--good-fill); color: var(--on-good-fill); font-weight: 800; }
 .dayToday { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+
+/* Daily reminder */
+.reminder { display: grid; gap: 12px; padding: 16px; }
+.reminder > button { justify-self: start; }
+.reminderTitle { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.timeRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-weight: 600; }
+.time { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--ink); font: inherit; font-variant-numeric: tabular-nums; }
+.reminderError { font-size: 14px; font-weight: 600; color: var(--bad); }

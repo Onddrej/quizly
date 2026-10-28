@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const pwa = VitePWA({
+  // injectManifest because the service worker has code of its own: the daily reminder (src/sw.ts, periodic background sync)
+  strategies: 'injectManifest',
+  srcDir: 'src',
+  filename: 'sw.ts',
   // autoUpdate swaps the service worker silently, which is safe today: the app is ONE JS chunk with content-hashed fonts,
   // and the plugin only emits a bare navigator.serviceWorker.register (no virtual:pwa-register, no reload handler), so an
   // update never touches a running study session (spec 10: a new version activates at the next launch). Adding React.lazy
@@ -28,7 +32,7 @@ const pwa = VitePWA({
       { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   },
-  workbox: {
+  injectManifest: {
     globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
   },
 });

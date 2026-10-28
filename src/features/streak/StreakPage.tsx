@@ -5,6 +5,7 @@ import { Page } from '../../ui/Page';
 import { TopBar } from '../../ui/TopBar';
 import { IconButton } from '../../ui/IconButton';
 import { MonthCalendar } from './MonthCalendar';
+import { ReminderCard } from './ReminderCard';
 import { WeekDots } from './WeekDots';
 import { useStudyDays } from './useStudyDays';
 import styles from './Streak.module.css';
@@ -30,6 +31,7 @@ export function StreakPage() {
         <WeekDots today={today} studyDays={studyDays} />
       </section>
       <MonthCalendar today={today} studyDays={studyDays} />
+      <ReminderCard />
     </Page>
   );
 }

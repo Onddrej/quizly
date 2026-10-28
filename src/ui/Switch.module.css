@@ -25,3 +25,4 @@
 }
 .input:checked { background: var(--accent); }
 .input:checked::after { transform: translateX(18px); }
+.input:disabled { opacity: .5; cursor: not-allowed; }
