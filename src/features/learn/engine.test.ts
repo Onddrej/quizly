@@ -9,6 +9,7 @@ import {
   isSetMastered,
   pickChoices,
   questionTypeFor,
+  questionTypeOf,
   selectRoundCards,
   stageAfter,
   startRound,
@@ -373,5 +374,79 @@ describe('pickChoices (extra)', () => {
 
   it('honours a custom option count', () => {
     expect(pickChoices(cards[0], cards, createRng(1), 3)).toHaveLength(3);
+  });
+});
+
+describe('spaced review in the engine', () => {
+  const mastered = (id: string, overrides: Partial<Card> = {}) => card(id, { stage: 4, reviewStep: 0, nextReviewLesson: 5, ...overrides });
+
+  it('stageAfter sends a missed mastered card back to typing the English term', () => {
+    expect(stageAfter(4, false)).toBe(2);
+    expect(stageAfter(4, true)).toBe(4);
+    expect(stageAfter(3, false)).toBe(2);
+  });
+
+  it('mixes at most two due cards into a round of learning cards', () => {
+    const learning = Array.from({ length: 10 }, (_, i) => card(`n${i}`, { position: i }));
+    const due = [mastered('d1', { position: 20 }), mastered('d2', { position: 21 }), mastered('d3', { position: 22 })];
+    const picked = selectRoundCards([...learning, ...due], 7, 9).map((c) => c.id);
+    expect(picked).toHaveLength(7);
+    expect(picked.filter((id) => id.startsWith('d'))).toHaveLength(2);
+    expect(picked.filter((id) => id.startsWith('n'))).toHaveLength(5);
+  });
+
+  it('takes the most overdue cards first', () => {
+    const learning = [card('n1')];
+    const due = [mastered('late', { nextReviewLesson: 8 }), mastered('overdue', { nextReviewLesson: 2 }), mastered('mid', { nextReviewLesson: 5 })];
+    const picked = selectRoundCards([...learning, ...due], 7, 9).map((c) => c.id);
+    expect(picked).toContain('overdue');
+    expect(picked).toContain('mid');
+    expect(picked).not.toContain('late');
+  });
+
+  it('makes a round of due cards only when there is nothing left to learn', () => {
+    const due = Array.from({ length: 9 }, (_, i) => mastered(`d${i}`, { position: i, nextReviewLesson: i + 1 }));
+    const picked = selectRoundCards(due, 7, 20).map((c) => c.id);
+    expect(picked).toEqual(['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6']);
+  });
+
+  it('does not pick cards that are not due yet', () => {
+    expect(selectRoundCards([mastered('x', { nextReviewLesson: 12 })], 7, 9)).toEqual([]);
+  });
+
+  it('does not review anything without a lesson number, as before', () => {
+    expect(selectRoundCards([card('n1'), mastered('d1')], 7)).toHaveLength(1);
+  });
+
+  it('records the review step of the due cards a round starts with', () => {
+    const cards = [card('n1'), mastered('d1', { reviewStep: 3 })];
+    const state = startRound(cards, createRng(1), 7, 9);
+    expect(state.reviewSteps).toEqual({ d1: 3 });
+    expect(state.stages).toEqual({ n1: 0, d1: 4 });
+    expect(state.startStages.d1).toBe(4);
+  });
+
+  it('asks a due card by typing, in the direction its step says; a card that was missed goes back to the normal stages', () => {
+    const state = startRound([mastered('d1', { reviewStep: 0 }), mastered('d2', { reviewStep: 1 })], createRng(1), 7, 9);
+    expect(questionTypeOf(state, 'd1')).toBe('write-definition');
+    expect(questionTypeOf(state, 'd2')).toBe('write-term');
+    const missed = answer({ ...state, queue: ['d1', 'd2'] }, false).state;
+    expect(missed.stages.d1).toBe(2);
+    expect(questionTypeOf(missed, 'd1')).toBe('write-term');
+  });
+
+  it('keeps a due card mastered when it is answered right, and takes it out of the round', () => {
+    const state = startRound([mastered('d1'), card('n1')], createRng(1), 7, 9);
+    const { state: after, stage } = answer({ ...state, queue: ['d1', 'n1'] }, true);
+    expect(stage).toBe(4);
+    expect(after.queue).toEqual(['n1']);
+  });
+
+  it('is not mastered while a card is due, and is mastered again once none is due', () => {
+    const cards = [mastered('a', { nextReviewLesson: 5 }), mastered('b', { nextReviewLesson: 30 })];
+    expect(isSetMastered(cards)).toBe(true);
+    expect(isSetMastered(cards, 4)).toBe(true);
+    expect(isSetMastered(cards, 5)).toBe(false);
+    expect(isSetMastered([card('x', { stage: 3 })], 5)).toBe(false);
   });
 });

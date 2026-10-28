@@ -1,6 +1,7 @@
 import type { Card, Stage } from '../../db/types';
 import { normalize } from '../../lib/text';
 import { defaultRng, shuffle, type Rng } from '../../lib/random';
+import { MAX_REVIEWS_PER_ROUND, isDue, reviewQuestionType } from '../../lib/review';
 
 export type QuestionType = 'choice' | 'write-term' | 'write-definition';
 
@@ -13,6 +14,8 @@ export interface RoundState {
   firstTry: Record<string, boolean>;
   stages: Record<string, Stage>;
   startStages: Record<string, Stage>;
+  /** Review step of the cards that were mastered when the round started: they are asked again (spaced review). */
+  reviewSteps?: Record<string, number>;
 }
 
 export interface RoundResult {
@@ -36,32 +39,51 @@ export function questionTypeFor(stage: Stage): QuestionType | null {
   return null;
 }
 
-/** Correct moves one step forward; a mistake moves back one question type (spec 5.1). */
+/** The question a card is asked in this round: its stage's type, or for a mastered card being reviewed, a typed question. */
+export function questionTypeOf(state: RoundState, id: string): QuestionType | null {
+  const step = state.reviewSteps?.[id];
+  if (step !== undefined && state.stages[id] === 4) return reviewQuestionType(step);
+  return questionTypeFor(state.stages[id]);
+}
+
+/** Correct moves one step forward; a mistake moves back one question type (spec 5.1). A missed mastered card (a review) goes back to typing the English term. */
 export function stageAfter(stage: Stage, correct: boolean): Stage {
   if (correct) {
     if (stage <= 1) return 2;
     if (stage === 2) return 3;
     return 4;
   }
-  return stage === 3 ? 2 : 1;
+  return stage >= 3 ? 2 : 1;
 }
 
-/** In-progress cards (stage 1-3, longest unseen first) before new ones (set order), at most `size`. Mastered cards are never picked. */
-export function selectRoundCards(cards: readonly Card[], size = ROUND_SIZE): Card[] {
+/**
+ * In-progress cards (stage 1-3, longest unseen first) before new ones (set order), at most `size`. Mastered cards are
+ * picked only for review: given the current `lesson`, up to MAX_REVIEWS_PER_ROUND due cards (most overdue first) are
+ * added to the learning cards, and a set with nothing left to learn gets a round of due cards only.
+ */
+export function selectRoundCards(cards: readonly Card[], size = ROUND_SIZE, lesson?: number): Card[] {
   const open = cards.filter((c) => c.stage < 4);
   const inProgress = open
     .filter((c) => c.stage > 0)
     .sort((a, b) => (a.lastAnsweredAt ?? 0) - (b.lastAnsweredAt ?? 0) || a.position - b.position);
   const fresh = open.filter((c) => c.stage === 0).sort((a, b) => a.position - b.position);
-  return [...inProgress, ...fresh].slice(0, size);
+  const learn = [...inProgress, ...fresh];
+  const due =
+    lesson === undefined
+      ? []
+      : cards.filter((c) => isDue(c, lesson)).sort((a, b) => (a.nextReviewLesson ?? 0) - (b.nextReviewLesson ?? 0) || a.position - b.position);
+  if (learn.length === 0) return due.slice(0, size);
+  const reviews = due.slice(0, Math.min(MAX_REVIEWS_PER_ROUND, size - 1));
+  return [...learn.slice(0, size - reviews.length), ...reviews];
 }
 
 /** Builds a round from the picked cards at their saved stages, in shuffled order. Returns an already finished round (empty queue) when nothing is left to learn, so check isSetMastered first. */
-export function startRound(cards: readonly Card[], rng: Rng = defaultRng, size = ROUND_SIZE): RoundState {
-  const picked = selectRoundCards(cards, size);
+export function startRound(cards: readonly Card[], rng: Rng = defaultRng, size = ROUND_SIZE, lesson?: number): RoundState {
+  const picked = selectRoundCards(cards, size, lesson);
   const ids = picked.map((c) => c.id);
   const stages: Record<string, Stage> = Object.fromEntries(picked.map((c) => [c.id, c.stage]));
-  return { cardIds: ids, queue: shuffle(ids, rng), attempts: {}, firstTry: {}, stages, startStages: { ...stages } };
+  const reviewSteps = Object.fromEntries(picked.filter((c) => c.stage === 4).map((c) => [c.id, c.reviewStep ?? 0]));
+  return { cardIds: ids, queue: shuffle(ids, rng), attempts: {}, firstTry: {}, stages, startStages: { ...stages }, reviewSteps };
 }
 
 export function currentCardId(state: RoundState): string | null {
@@ -117,6 +139,7 @@ export function pickChoices(target: Card, all: readonly Card[], rng: Rng = defau
   return shuffle([target.definition, ...distractors], rng);
 }
 
-export function isSetMastered(cards: readonly Card[]): boolean {
-  return cards.length > 0 && cards.every((c) => c.stage === 4);
+/** Every card is mastered and (given the current `lesson`) none is due for review. */
+export function isSetMastered(cards: readonly Card[], lesson?: number): boolean {
+  return cards.length > 0 && cards.every((c) => c.stage === 4) && (lesson === undefined || !cards.some((c) => isDue(c, lesson)));
 }

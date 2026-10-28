@@ -24,6 +24,10 @@ export interface Card {
   meaning?: string;
   /** Optional example sentences, 1-2, separated by `\n` (UI label "Examples"). Never checked in Learn. */
   examples?: string;
+  /** Spaced review (see lib/review.ts): the interval step 0-4 of a mastered card. Absent until the card is mastered. */
+  reviewStep?: number;
+  /** Spaced review: the lesson number from which the mastered card is asked again. */
+  nextReviewLesson?: number;
 }
 
 /** A local calendar day on which at least one learning round was completed (the streak and the lesson count come from these). */
