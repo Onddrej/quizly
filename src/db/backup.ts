@@ -62,13 +62,17 @@ function toSet(value: unknown): StudySet | null {
 
 function toCard(value: unknown): Card | null {
   if (!isObject(value)) return null;
-  const { id, setId, term, definition, position, starred, stage, lastAnsweredAt, meaning, examples } = value;
+  const { id, setId, term, definition, position, starred, stage, lastAnsweredAt, meaning, examples, reviewStep, nextReviewLesson } = value;
   if (!isString(id) || !isString(setId) || !isString(term) || !isString(definition)) return null;
   if (!isNumber(position) || typeof starred !== 'boolean' || !STAGES.has(stage)) return null;
   if (lastAnsweredAt !== undefined && !isNumber(lastAnsweredAt)) return null;
   if (meaning !== undefined && !isString(meaning)) return null;
   if (examples !== undefined && !isString(examples)) return null;
+  if (reviewStep !== undefined && !(isNumber(reviewStep) && Number.isInteger(reviewStep) && reviewStep >= 0 && reviewStep <= 4)) return null;
+  if (nextReviewLesson !== undefined && !(isNumber(nextReviewLesson) && Number.isInteger(nextReviewLesson) && nextReviewLesson >= 1)) return null;
   const card: Card = { id, setId, term, definition, position, starred, stage: stage as Stage };
+  if (reviewStep !== undefined) card.reviewStep = reviewStep;
+  if (nextReviewLesson !== undefined) card.nextReviewLesson = nextReviewLesson;
   if (lastAnsweredAt !== undefined) card.lastAnsweredAt = lastAnsweredAt;
   // blank or whitespace-only extras (hand-edited or foreign files) are not stored, same as when a card is saved (spec 5.7)
   Object.assign(card, normalizeCardDetails({ meaning, examples }));

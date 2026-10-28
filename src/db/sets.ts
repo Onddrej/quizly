@@ -6,6 +6,7 @@ import { tracedTransaction } from './trace';
 import type { Card, StudySet } from './types';
 import { normalizeCardDetails } from '../lib/cardDetails';
 import { diagnostics } from '../lib/diagnostics';
+import { reviewAfterMastered } from '../lib/review';
 import { newId } from '../lib/id';
 import { countStatuses, type StatusCounts } from '../lib/progress';
 import { requestPersistentStorage } from '../lib/storage';
@@ -110,6 +111,8 @@ export async function resetProgress(setId: string): Promise<void> {
     await db.cards.where('setId').equals(setId).modify((card) => {
       card.stage = 0;
       delete card.lastAnsweredAt;
+      delete card.reviewStep;
+      delete card.nextReviewLesson;
     });
     await db.sets.update(setId, { learnRound: 1 });
   });
@@ -122,6 +125,20 @@ export function completeRound(setId: string, now: number = Date.now()): Promise<
       set.learnRound += 1;
     });
     await bumpStudyDay(now);
+  });
+}
+
+/**
+ * Gives mastered cards that have no review schedule yet (mastered before spaced review existed) their first one, 3 lessons
+ * ahead of the lesson in progress. Cards that already have a schedule are left alone, so running it again changes nothing.
+ */
+export function scheduleMissingReviews(setId: string, lesson: number): Promise<void> {
+  return diagnostics.trace('scheduleMissingReviews', async () => {
+    await db.cards
+      .where('setId')
+      .equals(setId)
+      .filter((c) => c.stage === 4 && c.nextReviewLesson === undefined)
+      .modify(reviewAfterMastered(lesson));
   });
 }
 

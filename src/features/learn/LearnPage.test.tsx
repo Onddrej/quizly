@@ -565,21 +565,28 @@ describe('LearnPage retyping a missed answer', () => {
     await screen.findByText('Choose the matching translation');
     const first = shownTerm();
     const other = first === 'luggage' ? 'departure' : 'luggage';
-    const missFirst = async () => {
-      await user.click(screen.getByRole('button', { name: pairs[other] }));
-      expect(screen.getByText('Not quite')).toBeInTheDocument();
+    // the options are only on screen while a question is open (after an answer the answer card replaces them)
+    const questionFor = (term: string) =>
+      waitFor(
+        () => {
+          expect(screen.getByRole('group')).toBeInTheDocument();
+          expect(shownTerm()).toBe(term);
+        },
+        { timeout: 5000 },
+      );
+    const answerWith = async (translation: string, title: string) => {
+      await user.click(screen.getByRole('button', { name: translation }));
+      expect(screen.getByText(title)).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Continue' }));
     };
-    await missFirst();
-    await waitFor(() => expect(shownTerm()).toBe(other), { timeout: 5000 });
-    await user.click(screen.getByRole('button', { name: pairs[other] }));
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await answerWith(pairs[other], 'Not quite');
+    await questionFor(other);
+    await answerWith(pairs[other], 'Correct');
     for (let i = 0; i < 3; i++) {
-      await waitFor(() => expect(shownTerm()).toBe(first), { timeout: 5000 });
-      await waitFor(() => expect(screen.queryByText('Not quite')).not.toBeInTheDocument(), { timeout: 5000 });
-      await missFirst();
+      await questionFor(first);
+      await answerWith(pairs[other], 'Not quite');
     }
-    await waitFor(() => expect(shownTerm()).toBe(first), { timeout: 5000 });
+    await questionFor(first);
     await user.click(screen.getByRole('button', { name: pairs[first] }));
     expect(screen.getByText('Correct')).toBeInTheDocument();
   });
