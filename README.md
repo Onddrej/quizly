@@ -6,7 +6,7 @@ Runs in the browser and installs to the Android home screen as a PWA.
 
 Live: https://onddrej.github.io/quizly/
 
-Sets hold cards with a term, a translation and an optional definition and example sentences. Flashcards, Learn mode and pronunciation (the device's text-to-speech voices) work offline, and your data stays on the device.
+Sets hold cards with a term, a translation and an optional definition and example sentences. Flashcards, Learn mode and pronunciation (the device's text-to-speech voices) work offline, and your data stays on the device. A streak page tracks the days you studied, mastered words come back for review after a few lessons, and an optional daily reminder (Chrome on Android, installed app) nudges you to learn.
 
 ## Commands
 

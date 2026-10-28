@@ -247,9 +247,27 @@ Revízia 2026-10-02. Odpovedná strana slovíčka má až tri časti; druhé dve
 
 **Zmeny textov v rozhraní.** „Definition" (názov poľa v editore, nadpis zadania v Learn) → „Translation"; „Add a definition" → „Add a translation"; „Choose the matching definition" → „Choose the matching translation"; „Type the definition in Slovak" → „Type the translation in Slovak" (jazyk podľa `definitionLang`); nápoveda pri hromadnom vložení: „Separate term and translation with a dash, tab or comma."
 
+### 5.8 Streak, opakovanie zvládnutých slovíčok a denná pripomienka
+
+Revízia 2026-10-28.
+
+**Študijný deň a streak.** Dokončené kolo v Learn (`completeRound`) zapíše lokálny kalendárny deň (`YYYY-MM-DD`) do tabuľky `studyDays` (`{ day, rounds }`). Streak je počet po sebe idúcich študijných dní končiacich dnes, alebo včera, kým dnešný deň ešte nie je splnený. Najlepší streak sa počíta zo všetkých dní. Home ukazuje kartu so streakom (plameň, číslo, týždeň v kruhoch) nad „Jump back in"; ťuknutie otvorí stránku `/streak` (veľké číslo, najlepší streak, týždeň a mesačný kalendár so zelenými kruhmi pre študijné dni).
+
+**Opakovanie zvládnutých slovíčok (Leitner po lekciách).** Opakovanie sa neviaže na kalendárne dni, ale na počet **lekcií**; lekcia je študijný deň. Číslo aktuálnej lekcie = počet študijných dní + 1, kým dnes ešte nebolo dokončené kolo.
+- Zvládnuté slovíčko (`stage` 4) má `reviewStep` 0–4 a `nextReviewLesson`. Intervaly po kroku: 3, 7, 14, 30 a 60 lekcií. Po dosiahnutí `stage` 4 sa prvé opakovanie plánuje o 3 lekcie; už zvládnuté slovíčka dostanú prvý termín pri otvorení Learn (`scheduleMissingReviews`).
+- Slovíčko je „na opakovanie", keď je `stage` 4 a `nextReviewLesson` ≤ aktuálna lekcia. Do jedného kola sa zaradia najviac 2 také slovíčka; ak nie je čo sa učiť, kolo je len z opakovaní.
+- Opakovanie sa vždy píše (nikdy výber): párny krok = písanie prekladu, nepárny = písanie pojmu.
+- Správna odpoveď posunie krok a termín (po poslednom kroku ostáva interval 60 lekcií). Chyba vráti slovíčko na `stage` 2 a zmaže plán opakovania; zvládne sa znova bežnou cestou.
+- Záloha obsahuje `studyDays` a polia `reviewStep` / `nextReviewLesson`; import ich overí, staré zálohy bez nich ostávajú platné. Reset pokroku setu plán opakovania maže.
+
+**Denná pripomienka (Periodic Background Sync).** Na stránke Streak je karta „Daily reminder": prepínač „Remind me to learn" a čas (predvolene 19:30). Nastavenie `reminder = { enabled, time, lastSentDay? }` je v `settings`.
+- Zapnutie vyžiada povolenie notifikácií a zaregistruje periodic sync s tagom `daily-reminder`. Funguje len v Chromiu (Chrome na Androide) a len pri **nainštalovanej** appke; inak prepínač zostane vypnutý a karta povie prečo (nepodporované / zablokované notifikácie / appka nie je nainštalovaná).
+- Service worker (`src/sw.ts`) pri udalosti `periodicsync` zobrazí notifikáciu „Time to learn", ak je pripomienka zapnutá, je po nastavenom čase, dnes ešte nebolo dokončené kolo a ešte sa dnes neposlala (`lastSentDay`). Text hovorí o streaku („Finish a round today to keep your N-day streak." / „… to start a streak."). Ťuknutie na notifikáciu otvorí alebo zaostrí appku.
+- **Časovanie rozhoduje prehliadač.** Čas je „najskôr o", Chrome budí worker podľa vlastných pravidiel, takže pripomienka môže prísť o niekoľko hodín neskôr, alebo vôbec. Karta to píše otvorene a ponúka „Send a test notification". Ak by to v praxi nestačilo, alternatívou je pripomienka cez kalendár.
+
 ## 6. Dáta
 
-### 6.1 Schéma (Dexie, DB `quizly`, verzia 1)
+### 6.1 Schéma (Dexie, DB `quizly`, verzia 2)
 
 ```ts
 interface StudySet {
@@ -273,12 +291,16 @@ interface Card {
   lastAnsweredAt?: number;
   meaning?: string;      // voliteľná definícia v jazyku pojmu (angličtina); v rozhraní „Definition"
   examples?: string;     // voliteľné 1–2 príkladové vety, každá na samostatnom riadku; v rozhraní „Examples"
+  reviewStep?: number;   // 0–4, krok opakovania zvládnutého slovíčka (5.8)
+  nextReviewLesson?: number; // od ktorej lekcie je na opakovanie (5.8)
 }
+
+interface StudyDay { day: string; rounds: number } // lokálny deň 'YYYY-MM-DD' s aspoň jedným dokončeným kolom (5.8)
 
 interface Setting { key: string; value: unknown } // accent, theme, flashcard options
 ```
 
-Indexy: `sets: id, updatedAt, lastStudiedAt`, `cards: id, setId, [setId+position]`, `settings: key`.
+Indexy: `sets: id, updatedAt, lastStudiedAt`, `cards: id, setId, [setId+position]`, `settings: key`, `studyDays: day` (verzia 2; verzia 1 mala prvé tri).
 
 ### 6.2 Záloha
 
@@ -331,7 +353,7 @@ src/
   - `background_color: '#F6F7FB'`, `theme_color: '#4255FF'`,
   - ikony 192, 512 a maskable 512 (monogram „Q" v akcentovej modrej).
 - **Service worker:**
-  - Precache všetkých súborov buildu vrátane písma.
+  - Vlastný worker (`src/sw.ts`, vite-plugin-pwa `injectManifest`): precache všetkých súborov buildu vrátane písma, návrat na `index.html` pri navigácii a denná pripomienka (5.8).
   - Appka po prvom otvorení funguje bez siete.
   - `autoUpdate`: nová verzia sa aktivuje pri ďalšom spustení.
 - **`theme-color` meta:** podľa aktuálnej témy (svetlá `#F6F7FB`, tmavá `#0A092D`), aby systémová lišta ladila s appkou.
