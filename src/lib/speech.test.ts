@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { diagnostics } from './diagnostics';
 import { getVoices, hasEnglishVoice, isSpeechSupported, onVoicesChanged, pickVoice, speak } from './speech';
 
 const voice = (lang: string, name = lang, localService?: boolean) => ({ lang, name, localService }) as SpeechSynthesisVoice;
@@ -8,6 +9,9 @@ class FakeUtterance {
   lang = '';
   rate = 1;
   voice: SpeechSynthesisVoice | null = null;
+  onstart: (() => void) | null = null;
+  onend: (() => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
   constructor(text: string) {
     this.text = text;
   }
@@ -26,7 +30,9 @@ function stubSpeech(voices: SpeechSynthesisVoice[]) {
   return synth;
 }
 
+beforeEach(() => diagnostics.clear());
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -188,5 +194,89 @@ describe('onVoicesChanged', () => {
     unsubscribe();
     expect(synth.removeEventListener).toHaveBeenCalledTimes(1);
     expect(synth.removeEventListener).toHaveBeenCalledWith('voiceschanged', listener);
+  });
+});
+
+describe('speak: when the device stays silent', () => {
+  const lastUtterance = (synth: ReturnType<typeof stubSpeech>) => synth.speak.mock.calls.at(-1)?.[0] as FakeUtterance;
+  const failures = () => diagnostics.entries().filter((e) => e.kind === 'speech');
+
+  it('writes the error of a failed utterance to the diagnostics log, with the voice that was used', () => {
+    const synth = stubSpeech([voice('en-US', 'Google US English', true)]);
+    speak('hello', 'en-US');
+    lastUtterance(synth).onerror?.({ error: 'synthesis-failed' });
+    expect(failures()).toHaveLength(1);
+    expect(failures()[0].message).toBe('synthesis-failed; Google US English (en-US, on-device)');
+  });
+
+  it('does not log the normal interruption by the next utterance', () => {
+    const synth = stubSpeech([voice('en-US')]);
+    speak('hello', 'en-US');
+    lastUtterance(synth).onerror?.({ error: 'interrupted' });
+    lastUtterance(synth).onerror?.({ error: 'canceled' });
+    expect(failures()).toEqual([]);
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries once more without the chosen voice when that voice fails', () => {
+    const synth = stubSpeech([voice('en-US', 'broken', true)]);
+    speak('hello', 'en-GB');
+    lastUtterance(synth).onerror?.({ error: 'synthesis-failed' });
+    expect(synth.speak).toHaveBeenCalledTimes(2);
+    const retry = lastUtterance(synth);
+    expect(retry.text).toBe('hello');
+    expect(retry.lang).toBe('en-GB');
+    expect(retry.voice).toBeNull();
+    retry.onerror?.({ error: 'synthesis-failed' });
+    expect(synth.speak).toHaveBeenCalledTimes(2);
+    expect(failures().map((e) => e.message)).toEqual(['synthesis-failed; broken (en-US, on-device)', 'synthesis-failed; default voice']);
+  });
+
+  it('does not retry when no voice was chosen, or when the failure comes after the speech had started', () => {
+    const none = stubSpeech([voice('sk-SK')]);
+    speak('hello', 'en-US');
+    lastUtterance(none).onerror?.({ error: 'synthesis-failed' });
+    expect(none.speak).toHaveBeenCalledTimes(1);
+
+    const started = stubSpeech([voice('en-US')]);
+    speak('hello', 'en-US');
+    lastUtterance(started).onstart?.();
+    lastUtterance(started).onerror?.({ error: 'audio-busy' });
+    expect(started.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs it, and tries the default voice, when nothing starts within three seconds', () => {
+    vi.useFakeTimers();
+    const synth = stubSpeech([voice('en-US', 'quiet', true)]);
+    speak('hello', 'en-US');
+    vi.advanceTimersByTime(2999);
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(failures().map((e) => e.message)).toEqual(['did not start within 3 s; quiet (en-US, on-device)']);
+    expect(synth.speak).toHaveBeenCalledTimes(2);
+    expect(lastUtterance(synth).voice).toBeNull();
+  });
+
+  it('stays quiet when the speech starts in time', () => {
+    vi.useFakeTimers();
+    const synth = stubSpeech([voice('en-US')]);
+    speak('hello', 'en-US');
+    lastUtterance(synth).onstart?.();
+    vi.advanceTimersByTime(10000);
+    expect(failures()).toEqual([]);
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets the pending check when the next utterance interrupts the first', () => {
+    vi.useFakeTimers();
+    const synth = stubSpeech([voice('en-US')]);
+    speak('one', 'en-US');
+    const first = lastUtterance(synth);
+    speak('two', 'en-US');
+    first.onerror?.({ error: 'interrupted' });
+    lastUtterance(synth).onstart?.();
+    vi.advanceTimersByTime(10000);
+    expect(failures()).toEqual([]);
+    expect(synth.speak).toHaveBeenCalledTimes(2);
   });
 });

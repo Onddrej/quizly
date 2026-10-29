@@ -1,4 +1,5 @@
 import type { Accent } from '../db/types';
+import { diagnostics } from './diagnostics';
 
 const langOf = (v: SpeechSynthesisVoice) => v.lang.replace('_', '-').toLowerCase();
 
@@ -45,6 +46,12 @@ export function pickVoice(voices: readonly SpeechSynthesisVoice[], accent: Accen
   return best;
 }
 
+/** How long a started utterance may stay silent before it counts as failed. */
+const START_TIMEOUT_MS = 3000;
+
+const describeVoice = (voice: SpeechSynthesisVoice | undefined) =>
+  voice ? `${voice.name} (${voice.lang}, ${voice.localService ? 'on-device' : 'network'})` : 'default voice';
+
 export function speak(text: string, accent: Accent): void {
   if (!isSpeechSupported() || !text.trim()) return;
   // Callers include a React effect (flashcard autoplay): an exception from the speech API must never reach React and
@@ -52,13 +59,53 @@ export function speak(text: string, accent: Accent): void {
   try {
     const synth = window.speechSynthesis;
     synth.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = accent;
-    utterance.rate = 0.95;
-    const voice = pickVoice(synth.getVoices(), accent);
-    if (voice) utterance.voice = voice;
-    synth.speak(utterance);
+    utter(synth, text, accent, pickVoice(synth.getVoices(), accent), true);
   } catch {
     // speech is a convenience; nothing to recover
   }
+}
+
+/**
+ * Speaks once. Some Android engines fail or stay silent for the voice the browser lists (the voice list says "English"
+ * while the engine has no data for it): the failure goes to the diagnostics log, and the first failure of a chosen voice
+ * is retried with the engine's own default voice for the accent.
+ */
+function utter(synth: SpeechSynthesis, text: string, accent: Accent, voice: SpeechSynthesisVoice | undefined, mayRetry: boolean): void {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = accent;
+  utterance.rate = 0.95;
+  if (voice) utterance.voice = voice;
+  let started = false;
+  let done = false;
+  const fail = (reason: string) => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    diagnostics.record({ kind: 'speech', message: `${reason}; ${describeVoice(voice)}` });
+    if (!started && voice && mayRetry) {
+      try {
+        synth.cancel();
+        utter(synth, text, accent, undefined, false);
+      } catch {
+        // nothing more to try
+      }
+    }
+  };
+  const timer = setTimeout(() => fail(`did not start within ${START_TIMEOUT_MS / 1000} s`), START_TIMEOUT_MS);
+  utterance.onstart = () => {
+    started = true;
+    clearTimeout(timer);
+  };
+  utterance.onend = () => {
+    done = true;
+    clearTimeout(timer);
+  };
+  utterance.onerror = (event) => {
+    // the next utterance cancels the current one: that is not a failure
+    if (event.error === 'interrupted' || event.error === 'canceled') {
+      done = true;
+      clearTimeout(timer);
+    } else fail(event.error);
+  };
+  synth.speak(utterance);
 }

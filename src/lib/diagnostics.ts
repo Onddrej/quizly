@@ -9,7 +9,7 @@ export const MAX_ENTRIES = 100;
 export const SLOW_MS = 1000;
 export const STORAGE_KEY = 'quizly.diagnostics';
 
-const KINDS = ['error', 'rejection', 'render', 'op-failed', 'op-slow'] as const;
+const KINDS = ['error', 'rejection', 'render', 'op-failed', 'op-slow', 'speech'] as const;
 export type LogKind = (typeof KINDS)[number];
 
 export interface LogEntry {
