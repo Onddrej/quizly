@@ -8,6 +8,7 @@ import { createBackup, serializeBackup } from '../../db/backup';
 import { db } from '../../db/schema';
 import { initInstallPrompt } from '../../app/install';
 import { diagnostics } from '../../lib/diagnostics';
+import { resetSpeechForTests } from '../../lib/speech';
 
 // jsdom has no object URLs. The fakes stay for the whole file, because downloadText revokes the URL in a timer one second after the click.
 let downloadedBlob: Blob | undefined;
@@ -321,11 +322,16 @@ describe('SettingsPage install', () => {
 });
 
 describe('SettingsPage pronunciation', () => {
+  afterEach(() => resetSpeechForTests());
+
   class FakeUtterance {
     text: string;
     lang = '';
     rate = 1;
     voice: unknown = null;
+    onstart: (() => void) | null = null;
+    onend: (() => void) | null = null;
+    onerror: ((event: { error: string }) => void) | null = null;
     constructor(text: string) {
       this.text = text;
     }
@@ -358,6 +364,26 @@ describe('SettingsPage pronunciation', () => {
     await user.click(screen.getByRole('button', { name: 'Test voice' }));
     expect(synth.speak).toHaveBeenCalledTimes(1);
     expect((synth.speak.mock.calls[0][0] as FakeUtterance).lang).toBe('en-GB');
+  });
+
+  it('says what to try when the speech engine of the phone refuses to speak, and drops the hint once it works', async () => {
+    const synth = stub(['en-US']);
+    const { user } = renderRoute('/settings');
+    const lastUtterance = () => synth.speak.mock.calls.at(-1)?.[0] as FakeUtterance;
+    expect(screen.queryByText(/speech engine isn't responding/)).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: 'Test voice' }));
+    act(() => lastUtterance().onerror?.({ error: 'synthesis-failed' })); // the chosen voice, then the default voice
+    expect(screen.queryByText(/speech engine isn't responding/)).not.toBeInTheDocument();
+    act(() => lastUtterance().onerror?.({ error: 'synthesis-failed' }));
+    const hint = await screen.findByText(/speech engine isn't responding/);
+    expect(hint).toHaveTextContent(/Speech Services/);
+    expect(hint).toHaveTextContent(/reopen Chrome/);
+    expect(hint).toHaveAttribute('role', 'status');
+
+    await user.click(screen.getByRole('button', { name: 'Test voice' }));
+    act(() => lastUtterance().onstart?.());
+    await waitFor(() => expect(screen.queryByText(/speech engine isn't responding/)).not.toBeInTheDocument());
   });
 });
 

@@ -49,6 +49,37 @@ export function pickVoice(voices: readonly SpeechSynthesisVoice[], accent: Accen
 /** How long a started utterance may stay silent before it counts as failed. */
 const START_TIMEOUT_MS = 3000;
 
+/**
+ * True while the device's speech engine is not working: the last attempt failed with the chosen voice and with the
+ * engine's default voice too (so it is not about one voice), and nothing has started since. On Android the engine
+ * (Speech Services) can get stuck while the page's own sounds keep playing; only the user can restart it, so the UI
+ * tells them. Cleared by the next utterance that actually starts.
+ */
+let speechFailed = false;
+const failedListeners = new Set<() => void>();
+
+function setSpeechFailed(next: boolean): void {
+  if (speechFailed === next) return;
+  speechFailed = next;
+  failedListeners.forEach((listener) => listener());
+}
+
+export function getSpeechFailed(): boolean {
+  return speechFailed;
+}
+
+/** Calls `listener` whenever {@link getSpeechFailed} changes. Returns an unsubscribe function. */
+export function onSpeechFailedChanged(listener: () => void): () => void {
+  failedListeners.add(listener);
+  return () => failedListeners.delete(listener);
+}
+
+/** Test hook: forget a remembered failure. */
+export function resetSpeechForTests(): void {
+  speechFailed = false;
+  failedListeners.clear();
+}
+
 const describeVoice = (voice: SpeechSynthesisVoice | undefined) =>
   voice ? `${voice.name} (${voice.lang}, ${voice.localService ? 'on-device' : 'network'})` : 'default voice';
 
@@ -82,19 +113,23 @@ function utter(synth: SpeechSynthesis, text: string, accent: Accent, voice: Spee
     done = true;
     clearTimeout(timer);
     diagnostics.record({ kind: 'speech', message: `${reason}; ${describeVoice(voice)}` });
-    if (!started && voice && mayRetry) {
+    if (started) return; // it was speaking, so the engine works; this is a one-off error
+    if (voice && mayRetry) {
       try {
         synth.cancel();
         utter(synth, text, accent, undefined, false);
+        return;
       } catch {
         // nothing more to try
       }
     }
+    setSpeechFailed(true);
   };
   const timer = setTimeout(() => fail(`did not start within ${START_TIMEOUT_MS / 1000} s`), START_TIMEOUT_MS);
   utterance.onstart = () => {
     started = true;
     clearTimeout(timer);
+    setSpeechFailed(false);
   };
   utterance.onend = () => {
     done = true;

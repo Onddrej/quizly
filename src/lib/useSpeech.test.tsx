@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import { resetSpeechForTests } from './speech';
 import { useSpeech } from './useSpeech';
 
 const voice = (lang: string) => ({ lang, name: lang }) as SpeechSynthesisVoice;
-class FakeUtterance { text: string; lang = ''; rate = 1; voice: SpeechSynthesisVoice | null = null; constructor(t: string) { this.text = t; } }
+class FakeUtterance { text: string; lang = ''; rate = 1; voice: SpeechSynthesisVoice | null = null; onstart: (() => void) | null = null; onend: (() => void) | null = null; onerror: ((e: { error: string }) => void) | null = null; constructor(t: string) { this.text = t; } }
 function stub(initial: SpeechSynthesisVoice[]) {
   let voices = initial;
   const listeners = new Set<() => void>();
@@ -17,7 +18,7 @@ function stub(initial: SpeechSynthesisVoice[]) {
   vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
   return { synth, listeners, setVoices(v: SpeechSynthesisVoice[]) { voices = v; listeners.forEach((l) => l()); } };
 }
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); resetSpeechForTests(); });
 
 describe('useSpeech', () => {
   it('unsupported: not available, stable', () => {
@@ -55,5 +56,21 @@ describe('useSpeech', () => {
     const s = stub([voice('en-US')]);
     renderHook(() => useSpeech());
     expect(s.synth.getVoices).toHaveBeenCalled();
+  });
+  it('reports a stuck speech engine as failed, and clears it when speech starts again', () => {
+    const s = stub([voice('sk-SK')]);
+    const { result } = renderHook(() => useSpeech());
+    expect(result.current.failed).toBe(false);
+    act(() => result.current.say('hi'));
+    const last = () => s.synth.speak.mock.calls.at(-1)?.[0] as FakeUtterance;
+    act(() => last().onerror?.({ error: 'synthesis-failed' }));
+    expect(result.current.failed).toBe(true);
+    act(() => result.current.say('hi'));
+    act(() => last().onstart?.());
+    expect(result.current.failed).toBe(false);
+  });
+  it('is never failed when speech is unsupported', () => {
+    const { result } = renderHook(() => useSpeech());
+    expect(result.current.failed).toBe(false);
   });
 });

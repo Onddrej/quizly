@@ -136,6 +136,11 @@ export function SettingsPage() {
               Test voice
             </Button>
           )}
+          {speech.supported && speech.failed && (
+            <p className={styles.note} role="status">
+              Your phone's speech engine isn't responding. Close and reopen Chrome, or force stop “Speech Services by Google” in Android Settings → Apps, then tap Test voice again.
+            </p>
+          )}
           {!speech.supported && <p className={styles.note}>Pronunciation isn't available in this browser.</p>}
           {speech.supported && speech.voicesLoaded && !speech.hasEnglish && (
             <p className={styles.note}>No English voice found on this device. Install one in Android Settings → Text-to-speech.</p>
